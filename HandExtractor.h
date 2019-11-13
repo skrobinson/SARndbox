@@ -1,6 +1,7 @@
 /***********************************************************************
 HandExtractor - Class to identify hands from a depth image.
 Copyright (c) 2015-2016 Oliver Kreylos
+Copyright (c) 2019 Scottsdale Community College
 
 This file is part of the Augmented Reality Sandbox (SARndbox).
 
@@ -53,6 +54,7 @@ class HandExtractor
 		public:
 		Point center; // Hand's center in depth image space
 		double radius; // Hand's approximate radius in depth image space
+		int direction; // positive for rain, negative for evaporation
 		};
 	
 	typedef std::vector<Hand> HandList; // Type for lists of hand positions
