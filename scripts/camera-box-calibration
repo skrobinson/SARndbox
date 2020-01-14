@@ -1,0 +1,157 @@
+#!/usr/bin/bash
+
+# camera-box-calibration - calibrate Kinect as aligned with sandbox
+# Copyright 2020 Scottsdale Community College
+# Author: Sean Robinson <sean.robinson@scottsdalecc.edu>
+
+# This program is free software; you can redistribute it and/or
+# modify it under the terms of the GNU General Public License
+# as published by the Free Software Foundation; either version
+# 2 of the License, or (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, see http://www.gnu.org/licenses/.
+
+
+# Requires bc, grep, and sed
+
+# NOTE: DRYRUN environment variable controls file writing.  If set,
+# configuration file will not be written.
+
+
+# Give some vertical whitespace in user feedback.
+echo
+
+# Default to using the highest version's Boxlayout.txt file.
+_CONFIGFILE=$(ls -1 /etc/SARndbox-*/Boxlayout.txt 2> /dev/null | sort -n | tail -1 -)
+CONFIGFILE=${CONFIGFILE:-$_CONFIGFILE}
+if [[ -z $_CONFIGFILE ]] && [[ -z $CONFIGFILE ]]; then
+    echo "No configuration file found.  Try the following..."
+    echo "  CONFIGFILE=/home/sandbox/SARndbox/Boxlayout.txt camera-box-calibration"
+    echo "where CONFIGFILE should be set to your SARndbox Boxlayout.txt file."
+    exit $?
+fi
+
+# Default to using RawKinectViewer found in the $PATH.
+_RAWKINECTVIEWER=$(which RawKinectViewer 2> /dev/null)
+RAWKINECTVIEWER=${RAWKINECTVIEWER:-$_RAWKINECTVIEWER}
+if [[ -z $_RAWKINECTVIEWER ]] && [[ -z $RAWKINECTVIEWER ]]; then
+    echo "The RawKinectViewer program was not found.  Try the following..."
+    echo "  RAWKINECTVIEWER=/home/sandbox/bin/RawKinectViewer camera-box-calibration"
+    echo "where RAWKINECTVIEWER should be set to your RawKinectViewer location."
+    exit $?
+fi
+
+# Depth of sand surface below plane equation, in centimeters.
+# This should be a positive number.
+SANDOFFSET=${SANDOFFSET:-8.7}
+
+# Replace IFS to break on newline only.
+# This affects STDIN and STDOUT, so leave it until the script exits.
+IFS=$'\n'
+
+# Set some default values to alert the user to problems.
+PLANEEQN="missing plane equation"
+CORNER_LL="missing lower left corner"
+CORNER_LR="missing lower right corner"
+CORNER_UL="missing upper left corner"
+CORNER_UR="missing upper right corner"
+
+# Run RawKinectViewer and save its output for further processing.
+OUTPUT=$($RAWKINECTVIEWER)
+
+# Check each line of RawKinectViewer output...
+for LINE in $OUTPUT; do
+    # ...the plane equation.
+    if ( $(echo "$LINE" | grep --quiet "Camera-space plane equation" -) ); then
+        ORIGINVECTOR=$(echo $LINE | sed -r 's/.+\(([.0-9-]+), ([.0-9-]+), ([.0-9-]+)\) = ([.0-9-]+).+/(\1, \2, \3)/')
+        BASEPLANEOFFSET=$(echo $LINE | sed -r 's/.+\(([.0-9-]+), ([.0-9-]+), ([.0-9-]+)\) = ([.0-9-]+).+/ \4/')
+        PLANEEQN="$ORIGINVECTOR, $(echo $BASEPLANEOFFSET - $SANDOFFSET | bc -l)"
+    fi
+    # ...the box corners.
+    if ( $(echo "$LINE" | grep --quiet -E "^\(.+\)$" -) ); then
+        # Allow the user to gather box corners in any order.
+        CORNERSIG=$(echo $LINE | sed -r 's/\([ ]*([ -])[0-9.]+,[ ]*([ -])[0-9.]+,[ ]*([ -])[0-9.]+\)/\1\2\3/g')
+        if [[ $CORNERSIG == "---" ]]; then  # lower left
+            CORNER_LL=$LINE
+        elif [[ $CORNERSIG == " --" ]]; then  # lower right
+            CORNER_LR=$LINE
+        elif [[ $CORNERSIG == "- -" ]]; then  # upper left
+            CORNER_UL=$LINE
+        elif [[ $CORNERSIG == "  -" ]]; then  # upper right
+            CORNER_UR=$LINE
+        fi
+    fi
+done
+
+# Ensure all five new values are entered before overwriting configuration file.
+ERROR=0
+if [[ -z $PLANEEQN ]] || [[ $PLANEEQN == *"missing "* ]]; then
+    echo "Missing plane equation from calibration data."
+    (( ERROR++ ))
+fi
+if [[ -z $CORNER_LL ]] || [[ $CORNER_LL == *"missing "* ]]; then
+    echo "Missing lower left corner from calibration data."
+    (( ERROR++ ))
+fi
+if [[ -z $CORNER_LR ]] || [[ $CORNER_LR == *"missing "* ]]; then
+    echo "Missing lower right corner from calibration data."
+    (( ERROR++ ))
+fi
+if [[ -z $CORNER_UL ]] || [[ $CORNER_UL == *"missing "* ]]; then
+    echo "Missing upper left corner from calibration data."
+    (( ERROR++ ))
+fi
+if [[ -z $CORNER_UR ]] || [[ $CORNER_UR == *"missing "* ]]; then
+    echo "Missing upper right corner from calibration data."
+    (( ERROR++ ))
+fi
+if (( $ERROR > 0 )); then
+    exit 1
+fi
+
+# Save a backup of the current file and empty CONFIGFILE.
+if [[ -z "$DRYRUN" ]] && [[ -e $CONFIGFILE ]]; then
+    cp $CONFIGFILE ${CONFIGFILE}.bak
+    if [[ $? -ne 0 ]]; then
+        echo
+        echo "Failed to make back-up copy of $CONFIGFILE."
+        exit $?
+    fi
+    # Empty the file this way so the file ownership and permissions persist.
+    cp /dev/null $CONFIGFILE
+    if [[ $? -ne 0 ]]; then
+        echo "Failed to start new $CONFIGFILE."
+        exit $?
+    fi
+fi
+
+# Write plane equation and box corners to CONFIGFILE.
+if [[ -z "$DRYRUN" ]]; then
+    echo $PLANEEQN >> $CONFIGFILE
+    echo $CORNER_LL >> $CONFIGFILE
+    echo $CORNER_LR >> $CONFIGFILE
+    echo $CORNER_UL >> $CONFIGFILE
+    echo $CORNER_UR >> $CONFIGFILE
+    if [[ $? -ne 0 ]]; then
+        echo "Failed to build new $CONFIGFILE."
+        exit $?
+    fi
+    echo "New calibration written to $CONFIGFILE."
+    echo "Previous calibration copied to ${CONFIGFILE}.bak."
+else
+    echo $PLANEEQN
+    echo $CORNER_LL
+    echo $CORNER_LR
+    echo $CORNER_UL
+    echo $CORNER_UR
+fi
+
+echo
+echo "Press the Enter key to exit."
+read
