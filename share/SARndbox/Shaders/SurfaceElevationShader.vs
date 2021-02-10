@@ -1,7 +1,7 @@
 /***********************************************************************
 SurfaceElevationShader - Shader to render the elevation of a surface
 relative to a plane.
-Copyright (c) 2012 Oliver Kreylos
+Copyright (c) 2012-2014 Oliver Kreylos
 
 This file is part of the Augmented Reality Sandbox (SARndbox).
 
@@ -23,8 +23,10 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 #extension GL_ARB_texture_rectangle : enable
 
 uniform sampler2DRect depthSampler; // Sampler for the depth image-space elevation texture
-uniform mat4 depthProjection; // Transformation from depth image space to camera space
-uniform vec4 basePlane; // Plane equation of the base plane
+uniform vec4 basePlaneDic; // Plane equation of the base plane in depth image space
+uniform vec4 weightDic; // Equation to calculate a vertex weight in depth image space
+uniform mat4
+projectionModelviewDepthProjection; // Combined transformation from depth image space to clip space
 
 varying float elevation; // Elevation relative to base plane
 
@@ -33,12 +35,9 @@ void main() {
     vec4 vertexDic = gl_Vertex;
     vertexDic.z = texture2DRect(depthSampler, vertexDic.xy).r;
 
-    /* Transform the vertex from depth image space to camera space: */
-    vec4 vertexCc = depthProjection * vertexDic;
+    /* Plug depth image-space vertex into the depth image-space base plane equation: */
+    elevation = dot(basePlaneDic, vertexDic) / dot(weightDic, vertexDic);
 
-    /* Plug camera-space vertex into the base plane equation: */
-    elevation = dot(basePlane, vertexCc) / vertexCc.w;
-
-    /* Transform vertex to clip coordinates: */
-    gl_Position = gl_ModelViewProjectionMatrix * vertexCc;
+    /* Transform vertex directly from depth image space to clip space: */
+    gl_Position = projectionModelviewDepthProjection * vertexDic;
 }

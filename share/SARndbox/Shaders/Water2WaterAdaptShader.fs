@@ -1,6 +1,7 @@
 /***********************************************************************
-Water2WaterAddShader - Shader to render water-adding objects.
-Copyright (c) 2012-2014 Oliver Kreylos
+Water2WaterAdaptShader - Shader to adjust the water surface height to
+the current bathymetry.
+Copyright (c) 2014 Oliver Kreylos
 
 This file is part of the Augmented Reality Sandbox (SARndbox).
 
@@ -21,11 +22,19 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 
 #extension GL_ARB_texture_rectangle : enable
 
-uniform sampler2DRect waterSampler;
-
-varying float scaledWaterAmount;
+uniform sampler2DRect bathymetrySampler;
+uniform sampler2DRect newQuantitySampler;
 
 void main() {
-    /* Update the water texture: */
-    gl_FragColor = vec4(scaledWaterAmount);
+    /* Calculate the old and new bathymetry elevations at the center of this cell: */
+    float b = (texture2DRect(bathymetrySampler, vec2(gl_FragCoord.x - 1.0, gl_FragCoord.y - 1.0)).r +
+               texture2DRect(bathymetrySampler, vec2(gl_FragCoord.x, gl_FragCoord.y - 1.0)).r +
+               texture2DRect(bathymetrySampler, vec2(gl_FragCoord.x - 1.0, gl_FragCoord.y)).r +
+               texture2DRect(bathymetrySampler, vec2(gl_FragCoord.xy)).r) * 0.25;
+
+    /* Get the new quantity at the cell center: */
+    vec3 qNew = texture2DRect(newQuantitySampler, gl_FragCoord.xy).rgb;
+
+    /* Adjust the water surface height: */
+    gl_FragColor = vec4(max(qNew.x, b), qNew.yz, 0.0);
 }

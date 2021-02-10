@@ -1,7 +1,7 @@
 /***********************************************************************
  * CalibrateProjector - Utility to calculate the calibration transformation
  * of a projector into a Kinect-captured 3D space.
- * Copyright (c) 2012-2013 Oliver Kreylos
+ * Copyright (c) 2012-2015 Oliver Kreylos
  *
  * This file is part of the Augmented Reality Sandbox (SARndbox).
  *
@@ -43,6 +43,8 @@
 #include <Vrui/Vrui.h>
 #include <Vrui/ToolManager.h>
 #include <Vrui/OpenFile.h>
+
+#include "Config.h"
 
 /********************************************************
  * Static elements of class CalibrateProjector::CaptureTool:
@@ -141,7 +143,7 @@ void CalibrateProjector::depthStreamingCallback(const Kinect::FrameBuffer& frame
     Vrui::requestUpdate();
 }
 
-void CalibrateProjector::backgroundCaptureCompleteCallback(Kinect::Camera&) {
+void CalibrateProjector::backgroundCaptureCompleteCallback(Kinect::DirectFrameSource&) {
     /* Reset the background capture flag: */
     std::cout << " done" << std::endl;
     camera->setRemoveBackground(true);
@@ -172,9 +174,12 @@ CalibrateProjector::CalibrateProjector(int& argc, char**& argv)
 
     /* Process command line parameters: */
     bool printHelp = false;
-    std::string sandboxLayoutFileName = CONFIGDIR;
+    std::string sandboxLayoutFileName = CONFIG_CONFIGDIR;
     sandboxLayoutFileName.push_back('/');
-    sandboxLayoutFileName.append("BoxLayout.txt");
+    sandboxLayoutFileName.append(CONFIG_DEFAULTBOXLAYOUTFILENAME);
+    projectionMatrixFileName = CONFIG_CONFIGDIR;
+    projectionMatrixFileName.push_back('/');
+    projectionMatrixFileName.append(CONFIG_DEFAULTPROJECTIONMATRIXFILENAME);
     int cameraIndex = 0;
     imageSize[0] = 1024;
     imageSize[1] = 768;
@@ -207,6 +212,9 @@ CalibrateProjector::CalibrateProjector(int& argc, char**& argv)
             } else if(strcasecmp(argv[i] + 1, "tpf") == 0) {
                 ++i;
                 tiePointFileName = argv[i];
+            } else if(strcasecmp(argv[i] + 1, "pmf") == 0) {
+                ++i;
+                projectionMatrixFileName = argv[i];
             }
         }
     }
@@ -218,7 +226,8 @@ CalibrateProjector::CalibrateProjector(int& argc, char**& argv)
         std::cout << "     Prints this help message" << std::endl;
         std::cout << "  -slf <sandbox layout file name>" << std::endl;
         std::cout << "     Loads the sandbox layout file of the given name" << std::endl;
-        std::cout << "     Default: " << CONFIGDIR << "/BoxLayout.txt" << std::endl;
+        std::cout << "     Default: " << CONFIG_CONFIGDIR << '/' << CONFIG_DEFAULTBOXLAYOUTFILENAME <<
+                  std::endl;
         std::cout << "  -c <camera index>" << std::endl;
         std::cout << "     Selects the local Kinect camera of the given index (0: first camera" <<
                   std::endl;
@@ -238,6 +247,10 @@ CalibrateProjector::CalibrateProjector(int& argc, char**& argv)
         std::cout << "     Default: 1" << std::endl;
         std::cout << "  -tpf <tie point file name>" << std::endl;
         std::cout << "     Reads initial calibration tie points from a CSV file" << std::endl;
+        std::cout << "  -pmf <projection matrix file name>" << std::endl;
+        std::cout << "     Saves the calibration matrix to the file of the given name" << std::endl;
+        std::cout << "     Default: " << CONFIG_CONFIGDIR << '/' << CONFIG_DEFAULTPROJECTIONMATRIXFILENAME
+                  << std::endl;
     }
 
     /* Read the sandbox layout file: */
@@ -268,17 +281,14 @@ CalibrateProjector::CalibrateProjector(int& argc, char**& argv)
             tiePoints.push_back(tp);
         }
 
-        if(tiePoints.size() >= numTiePoints[0]*numTiePoints[1]) {
+        if(tiePoints.size() >= size_t(numTiePoints[0]*numTiePoints[1])) {
             /* Calculate an initial calibration: */
             calcCalibration();
         }
     }
 
-    /* Enable background USB event handling: */
-    usbContext.startEventHandling();
-
     /* Open the Kinect camera device: */
-    camera = new Kinect::Camera(usbContext, cameraIndex);
+    camera = new Kinect::Camera(cameraIndex);
     camera->setCompressDepthFrames(true);
     camera->setSmoothDepthFrames(false);
     camera->setBackgroundRemovalFuzz(1);
@@ -330,8 +340,7 @@ void CalibrateProjector::frame(void) {
     /* Check if there is a new raw depth frame: */
     if(rawFrames.lockNewValue()) {
         /* Extract all foreground blobs from the raw depth frame: */
-        const DepthPixel* framePixels = static_cast<const DepthPixel*>
-                                        (rawFrames.getLockedValue().getBuffer());
+        const DepthPixel* framePixels = rawFrames.getLockedValue().getData<DepthPixel>();
         BlobForegroundSelector bfs;
         BlobMergeChecker bmc(blobMergeDepth);
         DepthCentroidBlob::Creator blobCreator;
@@ -456,7 +465,7 @@ void CalibrateProjector::frame(void) {
                 capturingTiePoint = false;
 
                 /* Check if the calibration is complete: */
-                if(tiePoints.size() >= numTiePoints[0]*numTiePoints[1]) {
+                if(tiePoints.size() >= size_t(numTiePoints[0]*numTiePoints[1])) {
                     /* Calculate the calibration transformation: */
                     calcCalibration();
                 }
@@ -786,10 +795,7 @@ void CalibrateProjector::calcCalibration(void) {
         projection = invViewport * projection;
 
         /* Write the projection matrix to a file: */
-        std::string projFileName = CONFIGDIR;
-        projFileName.push_back('/');
-        projFileName.append("ProjectorMatrix.dat");
-        IO::FilePtr projFile = Vrui::openFile(projFileName.c_str(), IO::File::WriteOnly);
+        IO::FilePtr projFile = Vrui::openFile(projectionMatrixFileName.c_str(), IO::File::WriteOnly);
         projFile->setEndianness(Misc::LittleEndian);
         for(int i = 0; i < 4; ++i)
             for(int j = 0; j < 4; ++j)

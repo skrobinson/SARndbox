@@ -1,6 +1,6 @@
 /***********************************************************************
 SurfaceDepthShader - Shader to render a surface's depth only.
-Copyright (c) 2012 Oliver Kreylos
+Copyright (c) 2012-2014 Oliver Kreylos
 
 This file is part of the Augmented Reality Sandbox (SARndbox).
 

@@ -1,6 +1,7 @@
 /***********************************************************************
-Water2WaterAddShader - Shader to render water-adding objects.
-Copyright (c) 2012-2014 Oliver Kreylos
+WaterRenderingShader - Shader to render the water level surface of a
+water table.
+Copyright (c) 2014 Oliver Kreylos
 
 This file is part of the Augmented Reality Sandbox (SARndbox).
 
@@ -19,13 +20,11 @@ with the Augmented Reality Sandbox; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 ***********************************************************************/
 
-#extension GL_ARB_texture_rectangle : enable
-
-uniform sampler2DRect waterSampler;
-
-varying float scaledWaterAmount;
+varying vec4 color; // Color value for Goraud shading
 
 void main() {
-    /* Update the water texture: */
-    gl_FragColor = vec4(scaledWaterAmount);
+    /* Simply assign the interpolated color to the fragment: */
+    if(color.a < 0.0025)
+        discard;
+    gl_FragColor = color;
 }

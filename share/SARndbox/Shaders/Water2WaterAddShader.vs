@@ -1,6 +1,6 @@
 /***********************************************************************
 Water2WaterAddShader - Shader to render water-adding objects.
-Copyright (c) 2012 Oliver Kreylos
+Copyright (c) 2012-2014 Oliver Kreylos
 
 This file is part of the Augmented Reality Sandbox (SARndbox).
 
@@ -19,6 +19,7 @@ with the Augmented Reality Sandbox; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 ***********************************************************************/
 
+uniform mat4 pmv; // Combined transformation from camera space to clip space
 uniform float stepSize;
 
 attribute float waterAmount;
@@ -30,5 +31,5 @@ void main() {
     scaledWaterAmount = waterAmount * stepSize;
 
     /* Use the standard vertex transform: */
-    gl_Position = ftransform();
+    gl_Position = pmv * gl_Vertex;
 }
