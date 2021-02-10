@@ -2,7 +2,7 @@
  * FrameFilter - Class to filter streams of depth frames arriving from a
  * depth camera, with code to detect unstable values in each pixel, and
  * fill holes resulting from invalid samples.
- * Copyright (c) 2012-2013 Oliver Kreylos
+ * Copyright (c) 2012-2015 Oliver Kreylos
  *
  * This file is part of the Augmented Reality Sandbox (SARndbox).
  *
@@ -71,6 +71,7 @@ class FrameFilter {
     statBuffer; // Buffer retaining the running means and variances of each pixel's depth value
     unsigned int minNumSamples; // Minimum number of valid samples needed to consider a pixel stable
     unsigned int maxVariance; // Maximum variance to consider a pixel stable
+    float hysteresis; // Amount by which a new filtered value has to differ from the current value to update
     bool retainValids; // Flag whether to retain previous stable values if a new pixel in instable, or reset to a default value
     float instableValue; // Value to assign to instable pixels if retainValids is false
     bool spatialFilter; // Flag whether to apply a spatial filter to time-averaged depth values
@@ -98,6 +99,7 @@ class FrameFilter {
                                    newMaxElevation); // Sets the interval of elevations relative to the given base plane considered by the depth image filter
     void setStableParameters(unsigned int newMinNumSamples,
                              unsigned int newMaxVariance); // Sets the statistical properties to consider a pixel stable
+    void setHysteresis(float newHysteresis); // Sets the stable value hysteresis envelope
     void setRetainValids(bool
                          newRetainValids); // Sets whether the filter retains previous stable values for instable pixels
     void setInstableValue(float newInstableValue); // Sets the depth value to assign to instable pixels
