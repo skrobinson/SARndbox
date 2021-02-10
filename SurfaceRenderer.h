@@ -1,7 +1,7 @@
 /***********************************************************************
  * SurfaceRenderer - Class to render a surface defined by a regular grid in
  * depth image space.
- * Copyright (c) 2012-2016 Oliver Kreylos
+ * Copyright (c) 2012-2017 Oliver Kreylos
  *
  * This file is part of the Augmented Reality Sandbox (SARndbox).
  *
@@ -25,6 +25,7 @@
 
 #include <IO/FileMonitor.h>
 #include <Geometry/ProjectiveTransformation.h>
+#include <Geometry/Plane.h>
 #include <GL/gl.h>
 #include <GL/Extensions/GLARBShaderObjects.h>
 #include <GL/GLObject.h>
@@ -41,6 +42,9 @@ class WaterTable2;
 
 class SurfaceRenderer: public GLObject {
     /* Embedded classes: */
+  public:
+    typedef Geometry::Plane<GLfloat, 3> Plane; // Type for plane equations
+
   private:
     struct DataItem: public GLObject::DataItem {
         /* Elements: */
@@ -58,7 +62,7 @@ class SurfaceRenderer: public GLObject {
         lightTrackerVersion; // Version number of light tracker state for which the height map shader was built
         GLhandleARB
         globalAmbientHeightMapShader; // Shader program to render the global ambient component of the surface using a height color map
-        GLint globalAmbientHeightMapShaderUniforms[11]; // Locations of the global ambient height map shader's uniform variables
+        GLint globalAmbientHeightMapShaderUniforms[13]; // Locations of the global ambient height map shader's uniform variables
         GLhandleARB
         shadowedIlluminatedHeightMapShader; // Shader program to render the surface using illumination with shadows and a height color map
         GLint shadowedIlluminatedHeightMapShaderUniforms[14]; // Locations of the shadowed illuminated height map shader's uniform variables
@@ -80,6 +84,10 @@ class SurfaceRenderer: public GLObject {
 
     ElevationColorMap*
     elevationColorMap; // Pointer to a color map for topographic elevation map coloring
+
+    bool drawDippingBed; // Flag to draw a potentially dipping bedding plane
+    Plane dippingBedPlane; // Plane equation of the dipping bed
+    GLfloat dippingBedThickness; // Thickness of dipping bed in camera-space units
 
     DEM* dem; // Pointer to a pre-made digital elevation model to create a zero-surface for height color mapping
     GLfloat demDistScale; // Maximum deviation from surface to DEM in camera-space units
@@ -118,6 +126,10 @@ class SurfaceRenderer: public GLObject {
     void setContourLineDistance(GLfloat
                                 newContourLineDistance); // Sets the elevation distance between adjacent topographic contour lines
     void setElevationColorMap(ElevationColorMap* newElevationColorMap); // Sets an elevation color map
+    void setDrawDippingBed(bool newDrawDippingBed); // Sets the dipping bed flag
+    void setDippingBedPlane(const Plane& newDippingBedPlane); // Sets the dipping bed plane equation
+    void setDippingBedThickness(GLfloat
+                                newDippingBedThickness); // Sets the thickness of the dipping bed in camera-space units
     void setDem(DEM*
                 newDem); // Sets a pre-made digital elevation model to create a zero surface for height color mapping
     void setDemDistScale(GLfloat
