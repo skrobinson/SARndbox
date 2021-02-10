@@ -50,8 +50,8 @@ INSTALLDIR := $(PWD)
 VERSION = 2.7
 
 # Set up resource directories: */
-CONFIGDIR = etc/SARndbox-$(VERSION)
-RESOURCEDIR = share/SARndbox-$(VERSION)
+CONFIGDIR = etc/SARndbox
+RESOURCEDIR = share/SARndbox
 
 # Include definitions for the system environment and system-provided
 # packages
