@@ -1,7 +1,7 @@
 #!/usr/bin/bash
 
 # camera-box-calibration - calibrate Kinect as aligned with sandbox
-# Copyright 2020 Scottsdale Community College
+# Copyright 2020,2021 Scottsdale Community College
 # Author: Sean Robinson <sean.robinson@scottsdalecc.edu>
 
 # This program is free software; you can redistribute it and/or
@@ -34,6 +34,9 @@ if [[ -z $_CONFIGFILE ]] && [[ -z $CONFIGFILE ]]; then
     echo "No configuration file found.  Try the following..."
     echo "  CONFIGFILE=/home/sandbox/SARndbox/Boxlayout.txt camera-box-calibration"
     echo "where CONFIGFILE should be set to your SARndbox Boxlayout.txt file."
+    echo
+    echo "Press the Enter key to exit."
+    read
     exit $?
 fi
 
@@ -44,6 +47,9 @@ if [[ -z $_RAWKINECTVIEWER ]] && [[ -z $RAWKINECTVIEWER ]]; then
     echo "The RawKinectViewer program was not found.  Try the following..."
     echo "  RAWKINECTVIEWER=/home/sandbox/bin/RawKinectViewer camera-box-calibration"
     echo "where RAWKINECTVIEWER should be set to your RawKinectViewer location."
+    echo
+    echo "Press the Enter key to exit."
+    read
     exit $?
 fi
 
@@ -112,6 +118,9 @@ if [[ -z $CORNER_UR ]] || [[ $CORNER_UR == *"missing "* ]]; then
     (( ERROR++ ))
 fi
 if (( $ERROR > 0 )); then
+    echo
+    echo "Press the Enter key to exit."
+    read
     exit 1
 fi
 
@@ -121,12 +130,18 @@ if [[ -z "$DRYRUN" ]] && [[ -e $CONFIGFILE ]]; then
     if [[ $? -ne 0 ]]; then
         echo
         echo "Failed to make back-up copy of $CONFIGFILE."
+        echo
+        echo "Press the Enter key to exit."
+        read
         exit $?
     fi
     # Empty the file this way so the file ownership and permissions persist.
     cp /dev/null $CONFIGFILE
     if [[ $? -ne 0 ]]; then
         echo "Failed to start new $CONFIGFILE."
+        echo
+        echo "Press the Enter key to exit."
+        read
         exit $?
     fi
 fi
@@ -140,6 +155,9 @@ if [[ -z "$DRYRUN" ]]; then
     echo $CORNER_UR >> $CONFIGFILE
     if [[ $? -ne 0 ]]; then
         echo "Failed to build new $CONFIGFILE."
+        echo
+        echo "Press the Enter key to exit."
+        read
         exit $?
     fi
     echo "New calibration written to $CONFIGFILE."
