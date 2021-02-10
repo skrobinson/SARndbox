@@ -173,8 +173,8 @@ gl_Position=ftransform();\n\
 GLfloat WaterTable2::calcDerivative(WaterTable2::DataItem* dataItem, GLuint quantityTextureObject,
                                     bool calcMaxStepSize) const {
     /*********************************************************************
-     *    Step 1: Calculate partial spatial derivatives, partial fluxes across
-     *    cell boundaries, and the temporal derivative.
+     *  Step 1: Calculate partial spatial derivatives, partial fluxes across
+     *  cell boundaries, and the temporal derivative.
      *********************************************************************/
 
     /* Set up the derivative computation frame buffer: */
@@ -208,8 +208,8 @@ GLfloat WaterTable2::calcDerivative(WaterTable2::DataItem* dataItem, GLuint quan
     glBindTexture(GL_TEXTURE_RECTANGLE_ARB, 0);
 
     /*********************************************************************
-     *    Step 2: Gather the maximum step size by reducing the maximum step size
-     *    texture.
+     *  Step 2: Gather the maximum step size by reducing the maximum step size
+     *  texture.
      *********************************************************************/
 
     GLfloat stepSize = maxStepSize;
@@ -621,7 +621,7 @@ void WaterTable2::initContext(GLContextData& contextData) const {
     }
 
     /*********************************************************************
-     *    Initialize simulation state:
+     *  Initialize simulation state:
      *********************************************************************/
 
 #if 0
@@ -879,13 +879,13 @@ GLfloat WaterTable2::runSimulationStep(GLContextData& contextData) const {
     glLoadIdentity();
 
     /*********************************************************************
-     *    Step 1: Calculate temporal derivative of most recent quantities.
+     *  Step 1: Calculate temporal derivative of most recent quantities.
      *********************************************************************/
 
     GLfloat stepSize = calcDerivative(dataItem, dataItem->quantityTextureObject, true);
 
     /*********************************************************************
-     *    Step 2: Perform the tentative Euler integration step.
+     *  Step 2: Perform the tentative Euler integration step.
      *********************************************************************/
 
     /* Set up the Euler step integration frame buffer: */
@@ -930,13 +930,13 @@ GLfloat WaterTable2::runSimulationStep(GLContextData& contextData) const {
     glEnd();
 
     /*********************************************************************
-     *    Step 3: Calculate temporal derivative of intermediate quantities.
+     *  Step 3: Calculate temporal derivative of intermediate quantities.
      *********************************************************************/
 
     calcDerivative(dataItem, dataItem->quantityStarTextureObject, false);
 
     /*********************************************************************
-     *    Step 4: Perform the final Runge-Kutta integration step.
+     *  Step 4: Perform the final Runge-Kutta integration step.
      *********************************************************************/
 
     /* Set up the Runge-Kutta step integration frame buffer: */
@@ -972,8 +972,8 @@ GLfloat WaterTable2::runSimulationStep(GLContextData& contextData) const {
         glGetFloatv(GL_COLOR_CLEAR_VALUE, currentClearColor);
 
         /*******************************************************************
-         *        Step 5: Render all water sources and sinks additively into the water
-         *        texture.
+         *      Step 5: Render all water sources and sinks additively into the water
+         *      texture.
          *******************************************************************/
 
         /* Set up and clear the water frame buffer: */
@@ -1014,7 +1014,7 @@ GLfloat WaterTable2::runSimulationStep(GLContextData& contextData) const {
                      currentClearColor[3]);
 
         /*******************************************************************
-         *        Step 6: Update the conserved quantities based on the water texture.
+         *      Step 6: Update the conserved quantities based on the water texture.
          *******************************************************************/
 
         /* Set up the integration frame buffer to update the conserved quantities based on the water texture: */

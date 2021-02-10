@@ -146,7 +146,7 @@ GLhandleARB SurfaceRenderer::createSinglePassSurfaceShader(const GLLightTracker&
     std::vector<GLhandleARB> shaders;
     try {
         /*********************************************************************
-         *        Assemble and compile the surface rendering vertex shader:
+         *      Assemble and compile the surface rendering vertex shader:
          *********************************************************************/
 
         /* Assemble the function and declaration strings: */
@@ -272,7 +272,7 @@ GLhandleARB SurfaceRenderer::createSinglePassSurfaceShader(const GLLightTracker&
                           vertexUniforms.c_str(), "\t\t\n", vertexVaryings.c_str(), "\t\t\n", vertexMain.c_str()));
 
         /*********************************************************************
-         *        Assemble and compile the surface rendering fragment shaders:
+         *      Assemble and compile the surface rendering fragment shaders:
          *********************************************************************/
 
         /* Assemble the fragment shader's function declarations: */
@@ -377,7 +377,7 @@ GLhandleARB SurfaceRenderer::createSinglePassSurfaceShader(const GLLightTracker&
             glDeleteObjectARB(*shIt);
 
         /*******************************************************************
-         *        Query the shader program's uniform locations:
+         *      Query the shader program's uniform locations:
          *******************************************************************/
 
         GLint* ulPtr = uniformLocations;
@@ -805,8 +805,8 @@ void SurfaceRenderer::glPrepareContourLines(GLContextData& contextData) const {
     DataItem* dataItem = contextData.retrieveDataItem<DataItem>(this);
 
     /*********************************************************************
-     *    Prepare the half-pixel-offset frame buffer for subsequent per-fragment
-     *    Marching Squares contour line extraction.
+     *  Prepare the half-pixel-offset frame buffer for subsequent per-fragment
+     *  Marching Squares contour line extraction.
      *********************************************************************/
 
     /* Query the current viewport: */
@@ -895,8 +895,8 @@ void SurfaceRenderer::glPrepareContourLines(GLContextData& contextData) const {
     glMultMatrixd(proj);
 
     /*********************************************************************
-     *    Render the surface's elevation into the half-pixel offset frame
-     *    buffer.
+     *  Render the surface's elevation into the half-pixel offset frame
+     *  buffer.
      *********************************************************************/
 
     /* Bind the elevation shader: */
@@ -950,7 +950,7 @@ void SurfaceRenderer::glPrepareContourLines(GLContextData& contextData) const {
     glUseProgramObjectARB(0);
 
     /*********************************************************************
-     *    Restore previous OpenGL state.
+     *  Restore previous OpenGL state.
      *********************************************************************/
 
     /* Restore the original viewport and projection matrix: */

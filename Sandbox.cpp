@@ -448,6 +448,7 @@ Sandbox::Sandbox(int& argc, char**& argv, char**& appDefaults)
     bool renderWaterSurface = false;
     double rainElevationMin = -1000.0;
     double rainElevationMax = 1000.0;
+    double evaporationRate = 0.0;
     for(int i = 1; i < argc; ++i) {
         if(argv[i][0] == '-') {
             if(strcasecmp(argv[i] + 1, "h") == 0)
@@ -502,6 +503,9 @@ Sandbox::Sandbox(int& argc, char**& argv, char**& appDefaults)
             } else if(strcasecmp(argv[i] + 1, "rs") == 0) {
                 ++i;
                 rainStrength = GLfloat(atof(argv[i]));
+            } else if(strcasecmp(argv[i] + 1, "evr") == 0) {
+                ++i;
+                evaporationRate = atof(argv[i]);
             } else if(strcasecmp(argv[i] + 1, "fpv") == 0)
                 fixProjectorView = true;
             else if(strcasecmp(argv[i] + 1, "hs") == 0)
@@ -569,6 +573,9 @@ Sandbox::Sandbox(int& argc, char**& argv, char**& appDefaults)
         std::cout << "  -rs <rain strength>" << std::endl;
         std::cout << "     Sets the strength of global or local rainfall in cm/s" << std::endl;
         std::cout << "     Default: 0.25" << std::endl;
+        std::cout << "  -evr <evaporation rate>" << std::endl;
+        std::cout << "     Water evaporation rate in cm/s" << std::endl;
+        std::cout << "     Default: 0.0" << std::endl;
         std::cout << "  -fpv" << std::endl;
         std::cout << "     Fixes the navigation transformation so that Kinect camera and" << std::endl;
         std::cout << "     projector are aligned, as defined by the projector calibration file" <<
@@ -749,6 +756,7 @@ Sandbox::Sandbox(int& argc, char**& argv, char**& appDefaults)
     /* Initialize the water flow simulator: */
     waterTable = new WaterTable2(wtSize[0], wtSize[1], basePlane, basePlaneCorners);
     waterTable->setElevationRange(elevationMin, rainElevationMax);
+    waterTable->setWaterDeposit(evaporationRate);
 
     /* Register a render function with the water table: */
     addWaterFunction = Misc::createFunctionCall(this, &Sandbox::addWater);
@@ -908,14 +916,14 @@ void Sandbox::display(GLContextData& contextData) const {
             glGetIntegerv(GL_VIEWPORT, currentViewport);
 
             /*******************************************************************
-             *            First rendering pass: Global ambient illumination only
+             *          First rendering pass: Global ambient illumination only
              *******************************************************************/
 
             /* Draw the surface mesh: */
             surfaceRenderer->glRenderGlobalAmbientHeightMap(dataItem->heightColorMapObject, contextData);
 
             /*******************************************************************
-             *            Second rendering pass: Add local illumination for every light source
+             *          Second rendering pass: Add local illumination for every light source
              *******************************************************************/
 
             /* Enable additive rendering: */
@@ -927,7 +935,7 @@ void Sandbox::display(GLContextData& contextData) const {
             for(int lightSourceIndex = 0; lightSourceIndex < lt.getMaxNumLights(); ++lightSourceIndex)
                 if(lt.getLightState(lightSourceIndex).isEnabled()) {
                     /***************************************************************
-                     *                    First step: Render to the light source's shadow map
+                     *                  First step: Render to the light source's shadow map
                      ***************************************************************/
 
                     /* Set up OpenGL state to render to the shadow map: */
@@ -938,7 +946,7 @@ void Sandbox::display(GLContextData& contextData) const {
                     glCullFace(GL_FRONT);
 
                     /*************************************************************
-                     *                    Calculate the shadow projection matrix:
+                     *                  Calculate the shadow projection matrix:
                      *************************************************************/
 
                     /* Get the light source position in eye space: */
@@ -966,7 +974,7 @@ void Sandbox::display(GLContextData& contextData) const {
                         shadowModelview.leftMultiply(Vrui::ONTransform::translate(Vrui::Vector(0, 0, -lightDirCc.mag())));
 
                         /***********************************************************
-                         *                        Create a perspective projection:
+                         *                      Create a perspective projection:
                          ***********************************************************/
 
                         /* Calculate the perspective bounding box of the surface bounding box in eye space: */
@@ -992,7 +1000,7 @@ void Sandbox::display(GLContextData& contextData) const {
                         shadowProjection.getMatrix()(3, 2) = -1.0;
                     } else {
                         /***********************************************************
-                         *                        Create a perspective projection:
+                         *                      Create a perspective projection:
                          ***********************************************************/
 
                         /* Transform the bounding box with the modelview transformation: */
