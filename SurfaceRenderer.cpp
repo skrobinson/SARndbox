@@ -775,7 +775,7 @@ void SurfaceRenderer::renderSinglePass(const int viewport[4], const PTransform& 
                                     dataItem->heightMapShaderUniforms);
             glDeleteObjectARB(dataItem->heightMapShader);
             dataItem->heightMapShader = newShader;
-        } catch(std::runtime_error err) {
+        } catch(const std::runtime_error& err) {
             Misc::formattedUserError("SurfaceRenderer::renderSinglePass: Caught exception %s while rebuilding surface shader",
                                      err.what());
         }

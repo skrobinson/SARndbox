@@ -209,7 +209,7 @@ void Sandbox::RenderSettings::loadProjectorTransform(const char* projectorTransf
         projectorTransform = PTransform::fromRowMajor(pt);
 
         projectorTransformValid = true;
-    } catch(std::runtime_error err) {
+    } catch(const std::runtime_error& err) {
         /* Print an error message and disable calibrated projections: */
         std::cerr << "Unable to load projector transformation from file " << fullProjectorTransformName <<
                   " due to exception " << err.what() << std::endl;
@@ -225,7 +225,7 @@ void Sandbox::RenderSettings::loadHeightMap(const char* heightMapName) {
         /* Delete the previous elevation color map and assign the new one: */
         delete elevationColorMap;
         elevationColorMap = newElevationColorMap;
-    } catch(std::runtime_error err) {
+    } catch(const std::runtime_error& err) {
         std::cerr << "Ignoring height map due to exception " << err.what() << std::endl;
     }
 }
@@ -1128,7 +1128,7 @@ void Sandbox::frame(void) {
                                     rsIt != renderSettings.end(); ++rsIt)
                                 if(rsIt->elevationColorMap != 0)
                                     rsIt->elevationColorMap->load(tokens[1].c_str());
-                        } catch(std::runtime_error err) {
+                        } catch(const std::runtime_error& err) {
                             std::cerr << "Cannot read height color map " << tokens[1] << " due to exception " << err.what() <<
                                       std::endl;
                         }
