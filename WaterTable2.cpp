@@ -747,6 +747,10 @@ void WaterTable2::setElevationRange(WaterTable2::Scalar newMin, WaterTable2::Sca
     domain.max[2] = newMax;
 }
 
+void WaterTable2::setAttenuation(GLfloat newAttenuation) {
+    attenuation = newAttenuation;
+}
+
 void WaterTable2::setMaxStepSize(GLfloat newMaxStepSize) {
     maxStepSize = newMaxStepSize;
 }
