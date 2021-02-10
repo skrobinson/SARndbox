@@ -1,6 +1,6 @@
 ########################################################################
 # Makefile for the Augmented Reality Sandbox.
-# Copyright (c) 2012-2018 Oliver Kreylos
+# Copyright (c) 2012-2020 Oliver Kreylos
 #
 # This file is part of the WhyTools Build Environment.
 #
@@ -24,7 +24,7 @@
 # matches the default Vrui installation; if Vrui's installation
 # directory was changed during Vrui's installation, the directory below
 # must be adapted.
-VRUI_MAKEDIR := /usr/local/share/Vrui-4.6/make
+VRUI_MAKEDIR := /usr/local/share/Vrui-5.2/make
 ifdef DEBUG
   VRUI_MAKEDIR := $(VRUI_MAKEDIR)/debug
 endif
@@ -47,7 +47,7 @@ INSTALLDIR := $(PWD)
 # clobbering each other. The value should be identical to the
 # major.minor version number found in VERSION in the root package
 # directory.
-VERSION = 2.6
+VERSION = 2.7
 
 # Set up resource directories: */
 CONFIGDIR = etc/SARndbox-$(VERSION)
@@ -83,7 +83,8 @@ PACKAGES = MYKINECT MYVRUI
 ########################################################################
 
 ALL = $(EXEDIR)/CalibrateProjector \
-      $(EXEDIR)/SARndbox
+      $(EXEDIR)/SARndbox \
+      $(EXEDIR)/SARndboxClient
 
 PHONY: all
 all: $(ALL)
@@ -154,6 +155,7 @@ SARNDBOX_SOURCES = FrameFilter.cpp \
                    WaterTable2.cpp \
                    WaterRenderer.cpp \
                    HandExtractor.cpp \
+                   RemoteServer.cpp \
                    GlobalWaterTool.cpp \
                    LocalWaterTool.cpp \
                    DEM.cpp \
@@ -164,6 +166,16 @@ SARNDBOX_SOURCES = FrameFilter.cpp \
 $(EXEDIR)/SARndbox: $(SARNDBOX_SOURCES:%.cpp=$(OBJDIR)/%.o)
 .PHONY: SARndbox
 SARndbox: $(EXEDIR)/SARndbox
+
+#
+# The Augmented Reality Sandbox remote client application:
+#
+
+SARNDBOXCLIENT_SOURCES = SandboxClient.cpp
+
+$(EXEDIR)/SARndboxClient: $(SARNDBOXCLIENT_SOURCES:%.cpp=$(OBJDIR)/%.o)
+.PHONY: SARndboxClient
+SARndboxClient: $(EXEDIR)/SARndboxClient
 
 ########################################################################
 # Specify installation rules

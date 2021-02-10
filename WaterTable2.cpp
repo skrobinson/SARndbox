@@ -2,7 +2,7 @@
  * WaterTable2 - Class to simulate water flowing over a surface using
  * improved water flow simulation based on Saint-Venant system of partial
  * differenctial equations.
- * Copyright (c) 2012-2016 Oliver Kreylos
+ * Copyright (c) 2012-2019 Oliver Kreylos
  *
  * This file is part of the Augmented Reality Sandbox (SARndbox).
  *
@@ -292,8 +292,7 @@ GLfloat WaterTable2::calcDerivative(WaterTable2::DataItem* dataItem, GLuint quan
 WaterTable2::WaterTable2(GLsizei width, GLsizei height, const GLfloat sCellSize[2])
     : depthImageRenderer(0),
       baseTransform(ONTransform::identity),
-      dryBoundary(true),
-      readBathymetryRequest(0U), readBathymetryBuffer(0), readBathymetryReply(0U) {
+      dryBoundary(true) {
     /* Initialize the water table size and cell size: */
     size[0] = width;
     size[1] = height;
@@ -323,8 +322,7 @@ WaterTable2::WaterTable2(GLsizei width, GLsizei height, const GLfloat sCellSize[
 WaterTable2::WaterTable2(GLsizei width, GLsizei height,
                          const DepthImageRenderer* sDepthImageRenderer, const Point basePlaneCorners[4])
     : depthImageRenderer(sDepthImageRenderer),
-      dryBoundary(true),
-      readBathymetryRequest(0U), readBathymetryBuffer(0), readBathymetryReply(0U) {
+      dryBoundary(true) {
     /* Initialize the water table size: */
     size[0] = width;
     size[1] = height;
@@ -762,15 +760,6 @@ void WaterTable2::updateBathymetry(GLContextData& contextData) const {
                       dataItem->bathymetryTextureObjects[1 - dataItem->currentBathymetry]);
         glUniform1iARB(dataItem->bathymetryShaderUniformLocations[1], 1);
 
-        /* Check if the current bathymetry grid was requested: */
-        if(readBathymetryReply != readBathymetryRequest) {
-            /* Read back the bathymetry grid into the supplied buffer: */
-            glGetTexImage(GL_TEXTURE_RECTANGLE_ARB, 0, GL_RED, GL_FLOAT, readBathymetryBuffer);
-
-            /* Finish the request: */
-            readBathymetryReply = readBathymetryRequest;
-        }
-
         glActiveTextureARB(GL_TEXTURE2_ARB);
         glBindTexture(GL_TEXTURE_RECTANGLE_ARB,
                       dataItem->quantityTextureObjects[dataItem->currentQuantity]);
@@ -1136,16 +1125,4 @@ void WaterTable2::bindQuantityTexture(GLContextData& contextData) const {
 void WaterTable2::uploadWaterTextureTransform(GLint location) const {
     /* Upload the matrix to OpenGL: */
     glUniformMatrix4fvARB(location, 1, GL_FALSE, waterTextureTransformMatrix);
-}
-
-bool WaterTable2::requestBathymetry(GLfloat* newReadBathymetryBuffer) {
-    /* Check if the previous bathymetry request has been fulfilled: */
-    if(readBathymetryReply == readBathymetryRequest) {
-        /* Set up the new bathymetry request: */
-        ++readBathymetryRequest;
-        readBathymetryBuffer = newReadBathymetryBuffer;
-
-        return true;
-    } else
-        return false;
 }

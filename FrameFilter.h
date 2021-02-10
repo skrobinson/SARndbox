@@ -89,7 +89,8 @@ class FrameFilter {
 
     /* Methods: */
     void setValidDepthInterval(unsigned int newMinDepth,
-                               unsigned int newMaxDepth); // Sets the interval of depth values considered by the depth image filter
+                               unsigned int
+                               newMaxDepth); // Sets the interval of depth values considered by the depth image filter
     void setValidElevationInterval(const PTransform& depthProjection, const Plane& basePlane,
                                    double newMinElevation, double
                                    newMaxElevation); // Sets the interval of elevations relative to the given base plane considered by the depth image filter

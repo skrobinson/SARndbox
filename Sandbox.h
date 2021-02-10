@@ -1,6 +1,6 @@
 /***********************************************************************
  * Sandbox - Vrui application to drive an augmented reality sandbox.
- * Copyright (c) 2012-2018 Oliver Kreylos
+ * Copyright (c) 2012-2019 Oliver Kreylos
  *
  * This file is part of the Augmented Reality Sandbox (SARndbox).
  *
@@ -22,6 +22,7 @@
 #ifndef SANDBOX_INCLUDED
 #define SANDBOX_INCLUDED
 
+#include <Threads/Mutex.h>
 #include <Threads/TripleBuffer.h>
 #include <Geometry/Box.h>
 #include <Geometry/Rotation.h>
@@ -68,6 +69,7 @@ class SurfaceRenderer;
 class WaterTable2;
 class HandExtractor;
 typedef Misc::FunctionCall<GLContextData&> AddWaterFunction;
+class RemoteServer;
 class WaterRenderer;
 
 class Sandbox: public Vrui::Application, public GLObject {
@@ -90,6 +92,63 @@ class Sandbox: public Vrui::Application, public GLObject {
         /* Constructors and destructors: */
         DataItem(void);
         virtual ~DataItem(void);
+    };
+
+    struct GridRequest { // Structure representing a request to read back bathymetry and/or water level grids from the GPU
+        /* Embedded classes: */
+      public:
+        typedef void (*CallbackFunction)(GLfloat*, GLfloat*, void*); // Type for callback functions
+
+        struct Request { // Structure holding a request's parameters
+            /* Elements: */
+          public:
+            GLfloat* bathymetryBuffer; // Pointer to a buffer to hold the requested bathymetry grid if requested
+            GLfloat* waterLevelBuffer; // Pointer to a buffer to hold the requested water level grid if requested
+            CallbackFunction callback; // Function to call when the grid(s) has/have been read back
+            void* callbackData; // Additional data element to pass to callback function
+
+            /* Constructors and destructors: */
+            Request(void) // Creates an inactive request
+                : bathymetryBuffer(0), waterLevelBuffer(0), callback(0), callbackData(0) {
+            }
+
+            /* Methods: */
+            bool isActive(void) const { // Returns true if there is a pending request
+                return callback != 0;
+            }
+            void complete(void) { // Calls the read-back callback
+                (*callback)(bathymetryBuffer, waterLevelBuffer, callbackData);
+            }
+        };
+
+        /* Elements: */
+        Threads::Mutex mutex; // Mutex serializing access to the request structure
+        Request currentRequest; // The currently pending grid request
+
+        /* Constructors and destructors: */
+        GridRequest(void) { // Creates an inactive grid request
+        }
+
+        /* Methods: */
+        bool requestGrids(GLfloat* newBathymetryBuffer, GLfloat* newWaterLevelBuffer,
+                          CallbackFunction newCallback, void*
+                          newCallbackData) { // Requests a grid read-back; returns true if request has been granted
+            Threads::Mutex::Lock lock(mutex);
+            if(currentRequest.callback == 0) {
+                currentRequest.bathymetryBuffer = newBathymetryBuffer;
+                currentRequest.waterLevelBuffer = newWaterLevelBuffer;
+                currentRequest.callback = newCallback;
+                currentRequest.callbackData = newCallbackData;
+                return true;
+            } else
+                return false;
+        }
+        Request getRequest(void) { // Returns the current grid request and deactivates it
+            Threads::Mutex::Lock lock(mutex);
+            Request result = currentRequest;
+            currentRequest.callback = 0;
+            return result;
+        }
     };
 
     struct RenderSettings { // Structure to hold per-window rendering settings
@@ -124,9 +183,13 @@ class Sandbox: public Vrui::Application, public GLObject {
     friend class GlobalWaterTool;
     friend class LocalWaterTool;
     friend class DEMTool;
+    friend class BathymetrySaverTool;
+    friend class RemoteServer;
 
     /* Elements: */
   private:
+    RemoteServer*
+    remoteServer; // A server to stream bathymetry and water level grids to remote clients
     Kinect::FrameSource* camera; // The Kinect camera device
     unsigned int frameSize[2]; // Width and height of the camera's depth frames
     PixelDepthCorrection* pixelDepthCorrection; // Buffer of per-pixel depth correction coefficients
@@ -147,6 +210,7 @@ class Sandbox: public Vrui::Application, public GLObject {
     HandExtractor* handExtractor; // Object to detect splayed hands above the sand surface to make rain
     const AddWaterFunction* addWaterFunction; // Render function registered with the water table
     bool addWaterFunctionRegistered; // Flag if the water adding function is currently registered with the water table
+    mutable GridRequest gridRequest; // Structure holding pending grid read-back requests
     std::vector<RenderSettings> renderSettings; // List of per-window rendering settings
     Vrui::Lightsource* sun; // An external fixed light source
     DEM* activeDem; // The currently active DEM

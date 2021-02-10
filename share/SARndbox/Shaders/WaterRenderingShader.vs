@@ -1,7 +1,7 @@
 /***********************************************************************
 WaterRenderingShader - Shader to render the water level surface of a
 water table.
-Copyright (c) 2014 Oliver Kreylos
+Copyright (c) 2014-2019 Oliver Kreylos
 
 This file is part of the Augmented Reality Sandbox (SARndbox).
 
@@ -106,7 +106,7 @@ void main() {
 
     /* Assign the interpolated vertex color: */
     color = diffColor + specColor;
-    color.a = vertexGc.z - bathy;
+    color.a = (vertexGc.z - bathy) * 2.0;
 
     /* Transform vertex directly from grid space to clip space: */
     gl_Position = projectionModelviewGridMatrix * vertexGc;

@@ -1,6 +1,6 @@
 /***********************************************************************
  * Sandbox - Vrui application to drive an augmented reality sandbox.
- * Copyright (c) 2012-2018 Oliver Kreylos
+ * Copyright (c) 2012-2019 Oliver Kreylos
  *
  * This file is part of the Augmented Reality Sandbox (SARndbox).
  *
@@ -36,13 +36,15 @@
 #include <Misc/SelfDestructPointer.h>
 #include <Misc/FixedArray.h>
 #include <Misc/FunctionCalls.h>
+#include <Misc/MessageLogger.h>
 #include <Misc/FileNameExtensions.h>
 #include <Misc/StandardValueCoders.h>
 #include <Misc/ArrayValueCoders.h>
 #include <Misc/ConfigurationFile.h>
 #include <IO/File.h>
 #include <IO/ValueSource.h>
-#include <Cluster/OpenPipe.h>
+#include <IO/OpenFile.h>
+#include <Comm/OpenPipe.h>
 #include <Math/Math.h>
 #include <Math/Constants.h>
 #include <Math/Interval.h>
@@ -85,7 +87,6 @@
 #include <Vrui/Viewer.h>
 #include <Vrui/ToolManager.h>
 #include <Vrui/DisplayState.h>
-#include <Vrui/OpenFile.h>
 #include <Kinect/FileFrameSource.h>
 #include <Kinect/MultiplexedFrameSource.h>
 #include <Kinect/DirectFrameSource.h>
@@ -105,6 +106,7 @@
 #include "SurfaceRenderer.h"
 #include "WaterTable2.h"
 #include "HandExtractor.h"
+#include "RemoteServer.h"
 #include "WaterRenderer.h"
 #include "GlobalWaterTool.h"
 #include "LocalWaterTool.h"
@@ -199,7 +201,7 @@ void Sandbox::RenderSettings::loadProjectorTransform(const char* projectorTransf
             fullProjectorTransformName.push_back('/');
             fullProjectorTransformName.append(projectorTransformName);
         }
-        IO::FilePtr projectorTransformFile = Vrui::openFile(fullProjectorTransformName.c_str(),
+        IO::FilePtr projectorTransformFile = IO::openFile(fullProjectorTransformName.c_str(),
                                              IO::File::ReadOnly);
         projectorTransformFile->setEndianness(Misc::LittleEndian);
 
@@ -350,7 +352,7 @@ GLMotif::PopupMenu* Sandbox::createMainMenu(void) {
 }
 
 GLMotif::PopupWindow* Sandbox::createWaterControlDialog(void) {
-    const GLMotif::StyleSheet& ss = *Vrui::getWidgetManager()->getStyleSheet();
+    const GLMotif::StyleSheet& ss = *Vrui::getUiStyleSheet();
 
     /* Create a popup window shell: */
     GLMotif::PopupWindow* waterControlDialogPopup = new GLMotif::PopupWindow("WaterControlDialogPopup",
@@ -436,6 +438,10 @@ void printUsage(void) {
     std::cout << "  Options:" << std::endl;
     std::cout << "  -h" << std::endl;
     std::cout << "     Prints this help message" << std::endl;
+    std::cout << "  -remote [<listening port ID>]" << std::endl;
+    std::cout << "     Creates a data streaming server listening on TCP port <listening port ID>" <<
+              std::endl;
+    std::cout << "     Default listening port ID: 26000" << std::endl;
     std::cout << "  -c <camera index>" << std::endl;
     std::cout << "     Selects the local 3D camera of the given index (0: first camera" << std::endl;
     std::cout << "     on USB bus)" << std::endl;
@@ -538,6 +544,7 @@ void printUsage(void) {
 
 Sandbox::Sandbox(int& argc, char**& argv)
     : Vrui::Application(argc, argv),
+      remoteServer(0),
       camera(0), pixelDepthCorrection(0),
       frameFilter(0), pauseUpdates(false),
       depthImageRenderer(0),
@@ -590,13 +597,23 @@ Sandbox::Sandbox(int& argc, char**& argv)
     bool printHelp = false;
     const char* frameFilePrefix = 0;
     const char* kinectServerName = 0;
+    bool useRemoteServer = false;
+    int remoteServerPortId = 26000;
     int windowIndex = 0;
     renderSettings.push_back(RenderSettings());
     for(int i = 1; i < argc; ++i) {
         if(argv[i][0] == '-') {
             if(strcasecmp(argv[i] + 1, "h") == 0)
                 printHelp = true;
-            else if(strcasecmp(argv[i] + 1, "c") == 0) {
+            else if(strcasecmp(argv[i] + 1, "remote") == 0) {
+                /* Check if there is an optional port number: */
+                if(i + 1 < argc && argv[i + 1][0] >= '0' && argv[i + 1][0] <= '9') {
+                    ++i;
+                    remoteServerPortId = atoi(argv[i]);
+                }
+
+                useRemoteServer = true;
+            } else if(strcasecmp(argv[i] + 1, "c") == 0) {
                 ++i;
                 cameraIndex = atoi(argv[i]);
             } else if(strcasecmp(argv[i] + 1, "f") == 0) {
@@ -734,8 +751,8 @@ Sandbox::Sandbox(int& argc, char**& argv)
         colorFileName.append(".color");
         std::string depthFileName = frameFilePrefix;
         depthFileName.append(".depth");
-        camera = new Kinect::FileFrameSource(Vrui::openFile(colorFileName.c_str()),
-                                             Vrui::openFile(depthFileName.c_str()));
+        camera = new Kinect::FileFrameSource(IO::openFile(colorFileName.c_str()),
+                                             IO::openFile(depthFileName.c_str()));
     } else if(kinectServerName != 0) {
         /* Split the server name into host name and port: */
         const char* colonPtr = 0;
@@ -755,14 +772,14 @@ Sandbox::Sandbox(int& argc, char**& argv)
         }
 
         /* Open a multiplexed frame source for the given server host name and port number: */
-        Kinect::MultiplexedFrameSource* source = Kinect::MultiplexedFrameSource::create(
-                    Cluster::openTCPPipe(Vrui::getClusterMultiplexer(), hostName.c_str(), port));
+        Kinect::MultiplexedFrameSource* source = Kinect::MultiplexedFrameSource::create(Comm::openTCPPipe(
+                    hostName.c_str(), port));
 
         /* Use the server's first component stream as the camera device: */
         camera = source->getStream(0);
     } else {
         /* Open the 3D camera device of the selected index: */
-        Kinect::DirectFrameSource* realCamera = Kinect::openDirectFrameSource(cameraIndex);
+        Kinect::DirectFrameSource* realCamera = Kinect::openDirectFrameSource(cameraIndex, false);
         Misc::ConfigurationFileSection cameraConfigurationSection = cfg.getSection(
                     cameraConfiguration.c_str());
         realCamera->configure(cameraConfigurationSection);
@@ -794,7 +811,7 @@ Sandbox::Sandbox(int& argc, char**& argv)
     Geometry::Plane<double, 3> basePlane;
     Geometry::Point<double, 3> basePlaneCorners[4];
     {
-        IO::ValueSource layoutSource(Vrui::openFile(sandboxLayoutFileName.c_str()));
+        IO::ValueSource layoutSource(IO::openFile(sandboxLayoutFileName.c_str()));
         layoutSource.skipWs();
 
         /* Read the base plane equation: */
@@ -908,6 +925,16 @@ Sandbox::Sandbox(int& argc, char**& argv)
         addWaterFunctionRegistered = true;
     }
 
+    if(useRemoteServer) {
+        /* Create a remote server: */
+        try {
+            remoteServer = new RemoteServer(this, remoteServerPortId, 1.0 / 30.0);
+        } catch(const std::runtime_error& err) {
+            Misc::formattedConsoleError("Sandbox: Unable to create remote server on port %d due to exception %s",
+                                        remoteServerPortId, err.what());
+        }
+    }
+
     /* Initialize all surface renderers: */
     for(std::vector<RenderSettings>::iterator rsIt = renderSettings.begin();
             rsIt != renderSettings.end(); ++rsIt) {
@@ -988,6 +1015,7 @@ Sandbox::~Sandbox(void) {
     delete handExtractor;
     delete addWaterFunction;
     delete[] pixelDepthCorrection;
+    delete remoteServer;
 
     delete mainMenu;
     delete waterControlDialog;
@@ -1050,6 +1078,10 @@ bool isToken(const std::string& token, const char* pattern) {
 }
 
 void Sandbox::frame(void) {
+    /* Call the remote server's frame method: */
+    if(remoteServer != 0)
+        remoteServer->frame(Vrui::getApplicationTime());
+
     /* Check if the filtered frame has been updated: */
     if(filteredFrames.lockNewValue()) {
         /* Update the depth image renderer's depth image: */
@@ -1150,6 +1182,36 @@ void Sandbox::frame(void) {
                                 rsIt->elevationColorMap->calcTexturePlane(heightMapPlane);
                     } else
                         std::cerr << "Wrong number of arguments for heightMapPlane control pipe command" << std::endl;
+                } else if(isToken(tokens[0], "useContourLines")) {
+                    if(tokens.size() == 2) {
+                        /* Parse the command parameter: */
+                        if(isToken(tokens[1], "on") || isToken(tokens[1], "off")) {
+                            /* Enable or disable contour lines on all surface renderers: */
+                            bool useContourLines = isToken(tokens[1], "on");
+                            for(std::vector<RenderSettings>::iterator rsIt = renderSettings.begin();
+                                    rsIt != renderSettings.end(); ++rsIt)
+                                rsIt->surfaceRenderer->setDrawContourLines(useContourLines);
+                        } else
+                            std::cerr << "Invalid parameter " << tokens[1] << " for useContourLines control pipe command" <<
+                                      std::endl;
+                    } else
+                        std::cerr << "Wrong number of arguments for contourLineSpacing control pipe command" << std::endl;
+                } else if(isToken(tokens[0], "contourLineSpacing")) {
+                    if(tokens.size() == 2) {
+                        /* Parse the contour line distance: */
+                        GLfloat contourLineSpacing = GLfloat(atof(tokens[1].c_str()));
+
+                        /* Check if the requested spacing is valid: */
+                        if(contourLineSpacing > 0.0f) {
+                            /* Override the contour line spacing of all surface renderers: */
+                            for(std::vector<RenderSettings>::iterator rsIt = renderSettings.begin();
+                                    rsIt != renderSettings.end(); ++rsIt)
+                                rsIt->surfaceRenderer->setContourLineDistance(contourLineSpacing);
+                        } else
+                            std::cerr << "Invalid parameter " << contourLineSpacing <<
+                                      " for contourLineSpacing control pipe command" << std::endl;
+                    } else
+                        std::cerr << "Wrong number of arguments for contourLineSpacing control pipe command" << std::endl;
                 } else if(isToken(tokens[0], "dippingBed")) {
                     if(tokens.size() == 2 && isToken(tokens[1], "off")) {
                         /* Disable dipping bed rendering on all surface renderers: */
@@ -1230,8 +1292,19 @@ void Sandbox::display(GLContextData& contextData) const {
 
     /* Check if the water simulation state needs to be updated: */
     if(waterTable != 0 && dataItem->waterTableTime != Vrui::getApplicationTime()) {
+        /* Retrieve a potential pending grid read-back request: */
+        GridRequest::Request request = gridRequest.getRequest();
+
         /* Update the water table's bathymetry grid: */
         waterTable->updateBathymetry(contextData);
+
+        /* Check if the grid request is active and wants bathymetry data: */
+        if(request.isActive() && request.bathymetryBuffer != 0) {
+            /* Read back the current bathymetry grid: */
+            waterTable->bindBathymetryTexture(contextData);
+            glGetTexImage(GL_TEXTURE_RECTANGLE_ARB, 0, GL_RED, GL_FLOAT, request.bathymetryBuffer);
+            glBindTexture(GL_TEXTURE_RECTANGLE_ARB, 0);
+        }
 
         /* Run the water flow simulation's main pass: */
         GLfloat totalTimeStep = GLfloat(Vrui::getFrameTime() * waterSpeed);
@@ -1256,6 +1329,18 @@ void Sandbox::display(GLContextData& contextData) const {
         if(totalTimeStep > 1.0e-8f)
             std::cout << "Ran out of time by " << totalTimeStep << std::endl;
 #endif
+
+        /* Check if the grid request is active and wants water level data: */
+        if(request.isActive() && request.waterLevelBuffer != 0) {
+            /* Read back the current water level grid: */
+            waterTable->bindQuantityTexture(contextData);
+            glGetTexImage(GL_TEXTURE_RECTANGLE_ARB, 0, GL_RED, GL_FLOAT, request.waterLevelBuffer);
+            glBindTexture(GL_TEXTURE_RECTANGLE_ARB, 0);
+        }
+
+        /* Finish an active grid request: */
+        if(request.isActive())
+            request.complete();
 
         /* Mark the water simulation state as up-to-date for this frame: */
         dataItem->waterTableTime = Vrui::getApplicationTime();
@@ -1450,7 +1535,22 @@ void Sandbox::display(GLContextData& contextData) const {
         glMaterialAmbientAndDiffuse(GLMaterialEnums::FRONT, GLColor<GLfloat, 4>(0.0f, 0.5f, 0.8f));
         glMaterialSpecular(GLMaterialEnums::FRONT, GLColor<GLfloat, 4>(1.0f, 1.0f, 1.0f));
         glMaterialShininess(GLMaterialEnums::FRONT, 64.0f);
+        glEnable(GL_BLEND);
+        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
         rs.waterRenderer->render(projection, ds.modelviewNavigational, contextData);
+        glDisable(GL_BLEND);
+    }
+
+    /* Call the remote server's render method: */
+    if(remoteServer != 0) {
+        glMatrixMode(GL_PROJECTION);
+        glPushMatrix();
+        glLoadMatrix(projection);
+        glMatrixMode(GL_MODELVIEW);
+        remoteServer->glRenderAction(contextData);
+        glMatrixMode(GL_PROJECTION);
+        glPopMatrix();
+        glMatrixMode(GL_MODELVIEW);
     }
 }
 

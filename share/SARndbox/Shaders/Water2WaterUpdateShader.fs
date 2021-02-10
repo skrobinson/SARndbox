@@ -45,7 +45,8 @@ void main() {
 
     /* Update the partial discharges: */
     q.yz = hNew == 0.0 ? vec2(0.0,
-                              0.0) : (hNew < hOld ? q.yz * (hNew / hOld) : q.yz); // New water is added with zero velocity; water is removed at current velocity
+                              0.0) : (hNew < hOld ? q.yz * (hNew / hOld) :
+                                      q.yz); // New water is added with zero velocity; water is removed at current velocity
 
     /* Write the updated quantity: */
     gl_FragColor = vec4(q, 0.0);

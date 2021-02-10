@@ -2,7 +2,7 @@
  * WaterTable2 - Class to simulate water flowing over a surface using
  * improved water flow simulation based on Saint-Venant system of partial
  * differenctial equations.
- * Copyright (c) 2012-2016 Oliver Kreylos
+ * Copyright (c) 2012-2019 Oliver Kreylos
  *
  * This file is part of the Augmented Reality Sandbox (SARndbox).
  *
@@ -117,11 +117,6 @@ class WaterTable2: public GLObject {
     renderFunctions; // A list of functions that are called after each water flow simulation step to locally add or remove water from the water table
     GLfloat waterDeposit; // A fixed amount of water added at every iteration of the flow simulation, for evaporation etc.
     bool dryBoundary; // Flag whether to enforce dry boundary conditions at the end of each simulation step
-    unsigned int
-    readBathymetryRequest; // Request token to read back the current bathymetry grid from the GPU
-    mutable GLfloat* readBathymetryBuffer; // Buffer into which to read the current bathymetry grid
-    mutable unsigned int
-    readBathymetryReply; // Reply token after reading back the current bathymetry grid
 
     /* Private methods: */
     void calcTransformations(void); // Calculates derived transformations
@@ -184,11 +179,14 @@ class WaterTable2: public GLObject {
     void updateBathymetry(GLContextData& contextData)
     const; // Prepares the water table for subsequent calls to the runSimulationStep() method
     void updateBathymetry(const GLfloat* bathymetryGrid,
-                          GLContextData& contextData) const; // Updates the bathymetry directly with a vertex-centered elevation grid of grid size minus 1
+                          GLContextData& contextData)
+    const; // Updates the bathymetry directly with a vertex-centered elevation grid of grid size minus 1
     void setWaterLevel(const GLfloat* waterGrid,
-                       GLContextData& contextData) const; // Sets the current water level to the given grid, and resets flux components to zero
+                       GLContextData& contextData)
+    const; // Sets the current water level to the given grid, and resets flux components to zero
     GLfloat runSimulationStep(bool forceStepSize,
-                              GLContextData& contextData) const; // Runs a water flow simulation step, always uses maxStepSize if flag is true (may lead to instability); returns step size taken by Runge-Kutta integration step
+                              GLContextData& contextData)
+    const; // Runs a water flow simulation step, always uses maxStepSize if flag is true (may lead to instability); returns step size taken by Runge-Kutta integration step
     void bindBathymetryTexture(GLContextData& contextData)
     const; // Binds the bathymetry texture object to the active texture unit
     void bindQuantityTexture(GLContextData& contextData)
@@ -197,12 +195,6 @@ class WaterTable2: public GLObject {
     const; // Uploads the water texture transformation into the GLSL 4x4 matrix at the given uniform location
     GLsizei getBathymetrySize(int index) const { // Returns the width or height of the bathymetry grid
         return size[index] - 1;
-    }
-    bool requestBathymetry(GLfloat*
-                           newReadBathymetryBuffer); // Requests reading back the current bathymetry grid from the GPU during the next rendering cycle; returns true if request can be granted
-    bool haveBathymetry(void)
-    const { // Returns true if the most recent bathymetry request has been fulfilled
-        return readBathymetryReply == readBathymetryRequest;
     }
 };
 

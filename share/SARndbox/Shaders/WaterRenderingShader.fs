@@ -1,7 +1,7 @@
 /***********************************************************************
 WaterRenderingShader - Shader to render the water level surface of a
 water table.
-Copyright (c) 2014 Oliver Kreylos
+Copyright (c) 2014-2019 Oliver Kreylos
 
 This file is part of the Augmented Reality Sandbox (SARndbox).
 
@@ -24,7 +24,7 @@ varying vec4 color; // Color value for Goraud shading
 
 void main() {
     /* Simply assign the interpolated color to the fragment: */
-    if(color.a < 0.0025)
-        discard;
+    //if(color.a<0.0025)
+    //  discard;
     gl_FragColor = color;
 }

@@ -1,7 +1,7 @@
 /***********************************************************************
  * BathymetrySaverTool - Tool to save the current bathymetry grid of an
  * augmented reality sandbox to a file or network socket.
- * Copyright (c) 2016-2018 Oliver Kreylos
+ * Copyright (c) 2016-2019 Oliver Kreylos
  *
  * This file is part of the Augmented Reality Sandbox (SARndbox).
  *
@@ -30,10 +30,10 @@
 #include <Misc/StandardValueCoders.h>
 #include <Misc/ConfigurationFile.h>
 #include <IO/ValueSource.h>
+#include <IO/OpenFile.h>
 #include <IO/OStream.h>
 #include <Comm/TCPPipe.h>
 #include <Math/Math.h>
-#include <Vrui/OpenFile.h>
 
 #include "WaterTable2.h"
 #include "Sandbox.h"
@@ -196,7 +196,7 @@ std::ostream& printFloat8(std::ostream& os, double value) {
 
 void BathymetrySaverTool::writeDEMFile(void) const {
     /* Open the output file as a std::ostream: */
-    IO::OStream demFile(Vrui::openFile(configuration.saveFileName.c_str(), IO::File::WriteOnly));
+    IO::OStream demFile(IO::openFile(configuration.saveFileName.c_str(), IO::File::WriteOnly));
 
     /* Write the bathymetry name: */
     static const char* fileHeader = "Augmented Reality Sandbox bathymetry grid";
@@ -546,6 +546,24 @@ void BathymetrySaverTool::postUpdate(void) const {
     // std::cout<<std::endl;
 }
 
+void BathymetrySaverTool::readBackCallback(GLfloat* bathymetryBuffer, GLfloat* waterLevelBuffer,
+        void* userData) {
+    BathymetrySaverTool* thisPtr = static_cast<BathymetrySaverTool*>(userData);
+
+    try {
+        /* Export the bathymetry grid: */
+        thisPtr->writeDEMFile();
+
+        if(thisPtr->configuration.postUpdate) {
+            /* Send an update message to the configured web server: */
+            thisPtr->postUpdate();
+        }
+    } catch(const std::runtime_error& err) {
+        Misc::formattedUserError("Save Bathymetry: Unable to save bathymetry due to exception \"%s\"",
+                                 err.what());
+    }
+}
+
 BathymetrySaverToolFactory* BathymetrySaverTool::initClass(WaterTable2* sWaterTable,
         Vrui::ToolManager& toolManager) {
     /* Create the tool factory: */
@@ -561,8 +579,7 @@ BathymetrySaverTool::BathymetrySaverTool(const Vrui::ToolFactory* factory,
     : Vrui::Tool(factory, inputAssignment),
       configuration(BathymetrySaverTool::factory->configuration),
       bathymetryBuffer(new GLfloat[BathymetrySaverTool::factory->gridSize[1] *
-                                                                             BathymetrySaverTool::factory->gridSize[0]]),
-      requestPending(false) {
+                                                                             BathymetrySaverTool::factory->gridSize[0]]) {
 }
 
 BathymetrySaverTool::~BathymetrySaverTool(void) {
@@ -587,25 +604,7 @@ void BathymetrySaverTool::buttonCallback(int buttonSlotIndex,
         Vrui::InputDevice::ButtonCallbackData* cbData) {
     if(cbData->newButtonState) {
         /* Request a bathymetry grid from the water table: */
-        requestPending = factory->waterTable->requestBathymetry(bathymetryBuffer);
-    }
-}
-
-void BathymetrySaverTool::frame(void) {
-    if(requestPending && factory->waterTable->haveBathymetry()) {
-        try {
-            /* Export the bathymetry grid: */
-            writeDEMFile();
-
-            if(configuration.postUpdate) {
-                /* Send an update message to the configured web server: */
-                postUpdate();
-            }
-        } catch(const std::runtime_error& err) {
-            Misc::formattedUserError("Save Bathymetry: Unable to save bathymetry due to exception \"%s\"",
-                                     err.what());
-        }
-
-        requestPending = false;
+        application->gridRequest.requestGrids(bathymetryBuffer, 0, &BathymetrySaverTool::readBackCallback,
+                                              this);
     }
 }

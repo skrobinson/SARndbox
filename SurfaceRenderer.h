@@ -154,7 +154,8 @@ class SurfaceRenderer: public GLObject {
     const; // Renders the global ambient component of the surface as an illuminated height map in the current OpenGL context using the given pixel-corner elevation texture and 1D height color map
     void renderShadowedIlluminatedHeightMap(GLuint heightColorMapTexture, GLuint shadowTexture,
                                             const PTransform& shadowProjection,
-                                            GLContextData& contextData) const; // Renders the surface as an illuminated height map in the current OpenGL context using the given pixel-corner elevation texture and 1D height color map
+                                            GLContextData& contextData)
+    const; // Renders the surface as an illuminated height map in the current OpenGL context using the given pixel-corner elevation texture and 1D height color map
 #endif
 };
 

@@ -33,7 +33,7 @@
 #include <IO/CSVSource.h>
 #include <IO/File.h>
 #include <IO/OpenFile.h>
-#include <Cluster/OpenPipe.h>
+#include <Comm/OpenPipe.h>
 #include <Math/Math.h>
 #include <Math/Constants.h>
 #include <Math/Interval.h>
@@ -45,7 +45,6 @@
 #include <Vrui/VRScreen.h>
 #include <Vrui/ToolManager.h>
 #include <Vrui/DisplayState.h>
-#include <Vrui/OpenFile.h>
 #include <Kinect/DirectFrameSource.h>
 #include <Kinect/OpenDirectFrameSource.h>
 #include <Kinect/Camera.h>
@@ -177,8 +176,8 @@ CalibrateProjector::CalibrateProjector(int& argc, char**& argv)
                 i += 2;
                 if(i < argc) {
                     /* Open a connection to a remote Kinect server: */
-                    remoteSource = Kinect::MultiplexedFrameSource::create(Cluster::openTCPPipe(
-                                       Vrui::getClusterMultiplexer(), argv[i - 1], atoi(argv[i])));
+                    remoteSource = Kinect::MultiplexedFrameSource::create(Comm::openTCPPipe(argv[i - 1],
+                                   atoi(argv[i])));
                 }
             } else if(strcasecmp(argv[i] + 1, "c") == 0) {
                 ++i;
@@ -253,7 +252,7 @@ CalibrateProjector::CalibrateProjector(int& argc, char**& argv)
 
     /* Read the sandbox layout file: */
     {
-        IO::ValueSource layoutSource(Vrui::openFile(sandboxLayoutFileName.c_str()));
+        IO::ValueSource layoutSource(IO::openFile(sandboxLayoutFileName.c_str()));
         layoutSource.skipWs();
         std::string s = layoutSource.readLine();
         basePlane = Misc::ValueCoder<OPlane>::decode(s.c_str(), s.c_str() + s.length());
@@ -310,7 +309,7 @@ CalibrateProjector::CalibrateProjector(int& argc, char**& argv)
         camera = remoteSource->getStream(cameraIndex);
     } else {
         /* Open the camera of selected index on the local USB bus: */
-        Kinect::DirectFrameSource* directCamera = Kinect::openDirectFrameSource(cameraIndex);
+        Kinect::DirectFrameSource* directCamera = Kinect::openDirectFrameSource(cameraIndex, false);
         camera = directCamera;
 
         /* Set some camera type-specific parameters: */
@@ -750,7 +749,7 @@ void CalibrateProjector::calcCalibration(void) {
         projection = invViewport * projection;
 
         /* Write the projection matrix to a file: */
-        IO::FilePtr projFile = Vrui::openFile(projectionMatrixFileName.c_str(), IO::File::WriteOnly);
+        IO::FilePtr projFile = IO::openFile(projectionMatrixFileName.c_str(), IO::File::WriteOnly);
         projFile->setEndianness(Misc::LittleEndian);
         for(int i = 0; i < 4; ++i)
             for(int j = 0; j < 4; ++j)

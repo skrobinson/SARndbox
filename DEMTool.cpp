@@ -2,7 +2,7 @@
  * DEMTool - Tool class to load a digital elevation model into an augmented
  * reality sandbox to colorize the sand surface based on distance to the
  * DEM.
- * Copyright (c) 2013-2015 Oliver Kreylos
+ * Copyright (c) 2013-2018 Oliver Kreylos
  *
  * This file is part of the Augmented Reality Sandbox (SARndbox).
  *
@@ -25,8 +25,8 @@
 
 #include <Misc/StandardValueCoders.h>
 #include <Misc/ConfigurationFile.h>
+#include <IO/OpenFile.h>
 #include <Geometry/GeometryValueCoders.h>
-#include <Vrui/OpenFile.h>
 
 #include "Sandbox.h"
 
@@ -36,7 +36,7 @@
 
 DEMToolFactory::DEMToolFactory(Vrui::ToolManager& toolManager)
     : ToolFactory("DEMTool", toolManager),
-      demSelectionHelper(Vrui::getWidgetManager(), "", ".grid", Vrui::openDirectory(".")) {
+      demSelectionHelper(Vrui::getWidgetManager(), "", ".grid", IO::openDirectory(".")) {
     /* Initialize tool layout: */
     layout.setNumButtons(1);
 

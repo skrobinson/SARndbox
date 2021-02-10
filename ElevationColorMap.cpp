@@ -1,7 +1,7 @@
 /***********************************************************************
  * ElevationColorMap - Class to represent elevation color maps for
  * topographic maps.
- * Copyright (c) 2014-2016 Oliver Kreylos
+ * Copyright (c) 2014-2018 Oliver Kreylos
  *
  * This file is part of the Augmented Reality Sandbox (SARndbox).
  *
@@ -26,10 +26,10 @@
 #include <Misc/ThrowStdErr.h>
 #include <Misc/FileNameExtensions.h>
 #include <IO/ValueSource.h>
+#include <IO/OpenFile.h>
 #include <GL/gl.h>
 #include <GL/GLContextData.h>
 #include <GL/Extensions/GLARBShaderObjects.h>
-#include <Vrui/OpenFile.h>
 
 #include "Types.h"
 #include "DepthImageRenderer.h"
@@ -68,7 +68,7 @@ void ElevationColorMap::load(const char* heightMapName) {
     }
 
     /* Open the height map file: */
-    IO::ValueSource heightMapSource(Vrui::openFile(fullHeightMapName.c_str()));
+    IO::ValueSource heightMapSource(IO::openFile(fullHeightMapName.c_str()));
 
     /* Load the height color map: */
     std::vector<Color> heightMapColors;
