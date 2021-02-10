@@ -1,7 +1,7 @@
 /***********************************************************************
  * SurfaceRenderer - Class to render a surface defined by a regular grid in
  * depth image space.
- * Copyright (c) 2012 Oliver Kreylos
+ * Copyright (c) 2012-2013 Oliver Kreylos
  *
  * This file is part of the Augmented Reality Sandbox (SARndbox).
  *
@@ -80,7 +80,7 @@ class SurfaceRenderer: public GLObject {
 
     /* Elements: */
     IO::FileMonitor fileMonitor; // Monitor to watch the renderer's external shader source files
-    int size[2]; // Width and height of the depth image
+    unsigned int size[2]; // Width and height of the depth image
     PTransform depthProjection; // The transformation from depth image space to camera space
     GLfloat depthProjectionMatrix[16]; // Same, in GLSL-compatible format
     GLfloat tangentDepthProjectionMatrix[16]; // Depth projection for tangent planes in GLSL-compatible format
@@ -111,7 +111,7 @@ class SurfaceRenderer: public GLObject {
 
     /* Constructors and destructors: */
   public:
-    SurfaceRenderer(const int sSize[2], const PTransform& sDepthProjection,
+    SurfaceRenderer(const unsigned int sSize[2], const PTransform& sDepthProjection,
                     const Plane&
                     sBasePlane); // Creates a renderer for the given image size, depth projection, and base plane
 
@@ -138,22 +138,19 @@ class SurfaceRenderer: public GLObject {
                        newDepthImage); // Sets a new depth image for subsequent surface rendering
     void setAnimationTime(double newAnimationTime); // Sets the time for water animation in seconds
     void glRenderDepthOnly(const PTransform& modelviewProjection,
-                           GLContextData& contextData)
-    const; // Renders the surface into a pure depth buffer, for early z culling or shadow passes etc.
+                           GLContextData& contextData) const; // Renders the surface into a pure depth buffer, for early z culling or shadow passes etc.
     void glRenderElevation(GLContextData& contextData)
     const; // Renders the surface's elevation relative to the base plane into the current frame buffer
     void glPrepareContourLines(GLContextData& contextData)
     const; // Prepares to render topographic contour lines by rendering the base plane-relative elevations of pixel corners into a frame buffer
     void glRenderSinglePass(GLuint heightColorMapTexture,
-                            GLContextData& contextData)
-    const; // Renders the surface in a single pass using the current surface settings
+                            GLContextData& contextData) const; // Renders the surface in a single pass using the current surface settings
     void glRenderGlobalAmbientHeightMap(GLuint heightColorMapTexture,
                                         GLContextData& contextData)
     const; // Renders the global ambient component of the surface as an illuminated height map in the current OpenGL context using the given pixel-corner elevation texture and 1D height color map
     void glRenderShadowedIlluminatedHeightMap(GLuint heightColorMapTexture, GLuint shadowTexture,
             const PTransform& shadowProjection,
-            GLContextData& contextData)
-    const; // Renders the surface as an illuminated height map in the current OpenGL context using the given pixel-corner elevation texture and 1D height color map
+            GLContextData& contextData) const; // Renders the surface as an illuminated height map in the current OpenGL context using the given pixel-corner elevation texture and 1D height color map
 };
 
 #endif

@@ -1,7 +1,7 @@
 /***********************************************************************
  * SurfaceRenderer - Class to render a surface defined by a regular grid in
  * depth image space.
- * Copyright (c) 2012 Oliver Kreylos
+ * Copyright (c) 2012-2013 Oliver Kreylos
  *
  * This file is part of the Augmented Reality Sandbox (SARndbox).
  *
@@ -151,25 +151,25 @@ GLhandleARB SurfaceRenderer::createSinglePassSurfaceShader(const GLLightTracker&
 
         /* Assemble the function and declaration strings: */
         std::string vertexFunctions = "\
-                                                                   #extension GL_ARB_texture_rectangle : enable\n";
+        #extension GL_ARB_texture_rectangle : enable\n";
 
         std::string vertexUniforms = "\
-                                                                   uniform sampler2DRect depthSampler; // Sampler for the depth image-space elevation texture\n\
-                                                                   uniform mat4 depthProjection; // Transformation from depth image space to camera space\n";
+        uniform sampler2DRect depthSampler; // Sampler for the depth image-space elevation texture\n\
+        uniform mat4 depthProjection; // Transformation from depth image space to camera space\n";
 
         std::string vertexVaryings;
 
         /* Assemble the vertex shader's main function: */
         std::string vertexMain = "\
-                                                                   void main()\n\
-                                                                   {\n\
-                                                                   /* Get the vertex' depth image-space z coordinate from the texture: */\n\
-                                                                   vec4 vertexDic=gl_Vertex;\n\
-                                                                   vertexDic.z=texture2DRect(depthSampler,vertexDic.xy).r;\n\
-                                                                   \n\
-                                                                   /* Transform the vertex from depth image space to camera space: */\n\
-                                                                   vec4 vertexCc=depthProjection*vertexDic;\n\
-                                                                   \n";
+        void main()\n\
+        {\n\
+        /* Get the vertex' depth image-space z coordinate from the texture: */\n\
+        vec4 vertexDic=gl_Vertex;\n\
+        vertexDic.z=texture2DRect(depthSampler,vertexDic.xy).r;\n\
+        \n\
+        /* Transform the vertex from depth image space to camera space: */\n\
+        vec4 vertexCc=depthProjection*vertexDic;\n\
+        \n";
 
         if(useHeightMap) {
             /* Add declarations for height mapping: */
@@ -229,13 +229,13 @@ GLhandleARB SurfaceRenderer::createSinglePassSurfaceShader(const GLLightTracker&
 
                     if(firstLight) {
                         vertexMain += "\
-                        /* Call the light accumulation functions for all enabled light sources: */\n";
+                    /* Call the light accumulation functions for all enabled light sources: */\n";
                         firstLight = false;
                     }
 
                     /* Call the light accumulation function from vertex shader's main function: */
                     vertexMain += "\
-                    accumulateLight";
+                accumulateLight";
                     char liBuffer[12];
                     vertexMain.append(Misc::print(lightIndex, liBuffer + 11));
                     vertexMain +=
@@ -243,7 +243,7 @@ GLhandleARB SurfaceRenderer::createSinglePassSurfaceShader(const GLLightTracker&
                 }
             if(!firstLight)
                 vertexMain += "\
-                    \n";
+                \n";
         }
 
         if(waterTable != 0) {
@@ -265,7 +265,7 @@ GLhandleARB SurfaceRenderer::createSinglePassSurfaceShader(const GLLightTracker&
         vertexMain += "\
         /* Transform vertex to clip coordinates: */\n\
         gl_Position=gl_ModelViewProjectionMatrix*vertexCc;\n\
-                                                               }\n";
+    }\n";
 
         /* Compile the vertex shader: */
         shaders.push_back(glCompileVertexShaderFromStrings(7, vertexFunctions.c_str(), "\t\t\n",
@@ -284,63 +284,63 @@ GLhandleARB SurfaceRenderer::createSinglePassSurfaceShader(const GLLightTracker&
 
         /* Assemble the fragment shader's main function: */
         std::string fragmentMain = "\
-        void main()\n\
-        {\n";
+    void main()\n\
+    {\n";
 
         if(useHeightMap) {
             /* Add declarations for height mapping: */
             fragmentUniforms += "\
-            uniform sampler1D heightColorMapSampler;\n";
+        uniform sampler1D heightColorMapSampler;\n";
             fragmentVaryings += "\
-            varying float heightColorMapTexCoord; // Texture coordinate for the height color map\n";
+        varying float heightColorMapTexCoord; // Texture coordinate for the height color map\n";
 
             /* Add height mapping code to the fragment shader's main function: */
             fragmentMain += "\
-            /* Get the fragment's color from the height color map: */\n\
-            vec4 baseColor=texture1D(heightColorMapSampler,heightColorMapTexCoord);\n\
-            \n";
+        /* Get the fragment's color from the height color map: */\n\
+        vec4 baseColor=texture1D(heightColorMapSampler,heightColorMapTexCoord);\n\
+        \n";
         } else {
             fragmentMain += "\
-            /* Set the surface's base color to white: */\n\
-            vec4 baseColor=vec4(1.0,1.0,1.0,1.0);\n\
-            \n";
+        /* Set the surface's base color to white: */\n\
+        vec4 baseColor=vec4(1.0,1.0,1.0,1.0);\n\
+        \n";
         }
 
         if(drawContourLines) {
             /* Declare the contour line function: */
             fragmentDeclarations += "\
-            void addContourLines(in vec2,inout vec4);\n";
+        void addContourLines(in vec2,inout vec4);\n";
 
             /* Compile the contour line shader: */
             shaders.push_back(compileFragmentShader("SurfaceAddContourLines"));
 
             /* Call contour line function from fragment shader's main function: */
             fragmentMain += "\
-            /* Modulate the base color by contour line color: */\n\
-            addContourLines(gl_FragCoord.xy,baseColor);\n\
-            \n";
+        /* Modulate the base color by contour line color: */\n\
+        addContourLines(gl_FragCoord.xy,baseColor);\n\
+        \n";
         }
 
         if(illuminate) {
             /* Declare the illumination function: */
             fragmentDeclarations += "\
-            void illuminate(inout vec4);\n";
+        void illuminate(inout vec4);\n";
 
             /* Compile the illumination shader: */
             shaders.push_back(compileFragmentShader("SurfaceIlluminate"));
 
             /* Call illumination function from fragment shader's main function: */
             fragmentMain += "\
-            /* Apply illumination to the base color: */\n\
-            illuminate(baseColor);\n\
-            \n";
+        /* Apply illumination to the base color: */\n\
+        illuminate(baseColor);\n\
+        \n";
         }
 
         if(waterTable != 0) {
             /* Declare the water handling functions: */
             fragmentDeclarations += "\
-            void addWaterColor(in vec2,inout vec4);\n\
-            void addWaterColorAdvected(inout vec4);\n";
+        void addWaterColor(in vec2,inout vec4);\n\
+        void addWaterColorAdvected(inout vec4);\n";
 
             /* Compile the water handling shader: */
             shaders.push_back(compileFragmentShader("SurfaceAddWaterColor"));
@@ -348,22 +348,22 @@ GLhandleARB SurfaceRenderer::createSinglePassSurfaceShader(const GLLightTracker&
             /* Call water coloring function from fragment shader's main function: */
             if(advectWaterTexture) {
                 fragmentMain += "\
-                /* Modulate the base color with water color: */\n\
-                addWaterColorAdvected(baseColor);\n\
-                \n";
+            /* Modulate the base color with water color: */\n\
+            addWaterColorAdvected(baseColor);\n\
+            \n";
             } else {
                 fragmentMain += "\
-                /* Modulate the base color with water color: */\n\
-                addWaterColor(gl_FragCoord.xy,baseColor);\n\
-                \n";
+            /* Modulate the base color with water color: */\n\
+            addWaterColor(gl_FragCoord.xy,baseColor);\n\
+            \n";
             }
         }
 
         /* Finish the fragment shader's main function: */
         fragmentMain += "\
-        /* Assign the final color to the fragment: */\n\
-        gl_FragColor=baseColor;\n\
-                                                               }\n";
+    /* Assign the final color to the fragment: */\n\
+    gl_FragColor=baseColor;\n\
+    }\n";
 
         /* Compile the fragment shader: */
         shaders.push_back(glCompileFragmentShaderFromStrings(7, fragmentDeclarations.c_str(), "\t\t\n",
@@ -416,7 +416,7 @@ GLhandleARB SurfaceRenderer::createSinglePassSurfaceShader(const GLLightTracker&
     return result;
 }
 
-SurfaceRenderer::SurfaceRenderer(const int sSize[2],
+SurfaceRenderer::SurfaceRenderer(const unsigned int sSize[2],
                                  const SurfaceRenderer::PTransform& sDepthProjection, const SurfaceRenderer::Plane& sBasePlane)
     : depthProjection(sDepthProjection),
       basePlane(sBasePlane),
@@ -474,8 +474,8 @@ SurfaceRenderer::SurfaceRenderer(const int sSize[2],
     /* Initialize the depth image: */
     depthImage = Kinect::FrameBuffer(size[0], size[1], size[1] * size[0] * sizeof(float));
     float* diPtr = static_cast<float*>(depthImage.getBuffer());
-    for(int y = 0; y < size[1]; ++y)
-        for(int x = 0; x < size[0]; ++x, ++diPtr)
+    for(unsigned int y = 0; y < size[1]; ++y)
+        for(unsigned int x = 0; x < size[0]; ++x, ++diPtr)
             *diPtr = 0.0f;
 }
 
@@ -489,8 +489,8 @@ void SurfaceRenderer::initContext(GLContextData& contextData) const {
     glBindBufferARB(GL_ARRAY_BUFFER_ARB, dataItem->vertexBuffer);
     glBufferDataARB(GL_ARRAY_BUFFER_ARB, size[1]*size[0]*sizeof(Vertex), 0, GL_STATIC_DRAW_ARB);
     Vertex* vPtr = static_cast<Vertex*>(glMapBufferARB(GL_ARRAY_BUFFER_ARB, GL_WRITE_ONLY_ARB));
-    for(int y = 0; y < size[1]; ++y)
-        for(int x = 0; x < size[0]; ++x, ++vPtr) {
+    for(unsigned int y = 0; y < size[1]; ++y)
+        for(unsigned int x = 0; x < size[0]; ++x, ++vPtr) {
             vPtr->position[0] = float(x) + 0.5f;
             vPtr->position[1] = float(y) + 0.5f;
             vPtr->position[2] = 0.0f;
@@ -504,8 +504,8 @@ void SurfaceRenderer::initContext(GLContextData& contextData) const {
                     GL_STATIC_DRAW_ARB);
     GLuint* iPtr = static_cast<GLuint*>(glMapBufferARB(GL_ELEMENT_ARRAY_BUFFER_ARB,
                                         GL_WRITE_ONLY_ARB));
-    for(int y = 1; y < size[1]; ++y)
-        for(int x = 0; x < size[0]; ++x, iPtr += 2) {
+    for(unsigned int y = 1; y < size[1]; ++y)
+        for(unsigned int x = 0; x < size[0]; ++x, iPtr += 2) {
             iPtr[0] = GLuint(y * size[0] + x);
             iPtr[1] = GLuint((y - 1) * size[0] + x);
         }
@@ -728,7 +728,7 @@ void SurfaceRenderer::glRenderDepthOnly(const SurfaceRenderer::PTransform& model
     typedef GLGeometry::Vertex<void, 0, void, 0, void, float, 3> Vertex;
     GLVertexArrayParts::enable(Vertex::getPartsMask());
     glVertexPointer(static_cast<const Vertex*>(0));
-    for(int y = 1; y < size[1]; ++y)
+    for(unsigned int y = 1; y < size[1]; ++y)
         glDrawElements(GL_QUAD_STRIP, size[0] * 2, GL_UNSIGNED_INT,
                        static_cast<const GLuint*>(0) + (y - 1)*size[0] * 2);
     GLVertexArrayParts::disable(Vertex::getPartsMask());
@@ -783,7 +783,7 @@ void SurfaceRenderer::glRenderElevation(GLContextData& contextData) const {
     typedef GLGeometry::Vertex<void, 0, void, 0, void, float, 3> Vertex;
     GLVertexArrayParts::enable(Vertex::getPartsMask());
     glVertexPointer(static_cast<const Vertex*>(0));
-    for(int y = 1; y < size[1]; ++y)
+    for(unsigned int y = 1; y < size[1]; ++y)
         glDrawElements(GL_QUAD_STRIP, size[0] * 2, GL_UNSIGNED_INT,
                        static_cast<const GLuint*>(0) + (y - 1)*size[0] * 2);
     GLVertexArrayParts::disable(Vertex::getPartsMask());
@@ -933,7 +933,7 @@ void SurfaceRenderer::glPrepareContourLines(GLContextData& contextData) const {
     typedef GLGeometry::Vertex<void, 0, void, 0, void, float, 3> Vertex;
     GLVertexArrayParts::enable(Vertex::getPartsMask());
     glVertexPointer(static_cast<const Vertex*>(0));
-    for(int y = 1; y < size[1]; ++y)
+    for(unsigned int y = 1; y < size[1]; ++y)
         glDrawElements(GL_QUAD_STRIP, size[0] * 2, GL_UNSIGNED_INT,
                        static_cast<const GLuint*>(0) + (y - 1)*size[0] * 2);
     GLVertexArrayParts::disable(Vertex::getPartsMask());
@@ -1086,7 +1086,7 @@ void SurfaceRenderer::glRenderSinglePass(GLuint heightColorMapTexture,
     typedef GLGeometry::Vertex<void, 0, void, 0, void, float, 3> Vertex;
     GLVertexArrayParts::enable(Vertex::getPartsMask());
     glVertexPointer(static_cast<const Vertex*>(0));
-    for(int y = 1; y < size[1]; ++y)
+    for(unsigned int y = 1; y < size[1]; ++y)
         glDrawElements(GL_QUAD_STRIP, size[0] * 2, GL_UNSIGNED_INT,
                        static_cast<const GLuint*>(0) + (y - 1)*size[0] * 2);
     GLVertexArrayParts::disable(Vertex::getPartsMask());
@@ -1205,7 +1205,7 @@ void SurfaceRenderer::glRenderGlobalAmbientHeightMap(GLuint heightColorMapTextur
     typedef GLGeometry::Vertex<void, 0, void, 0, void, float, 3> Vertex;
     GLVertexArrayParts::enable(Vertex::getPartsMask());
     glVertexPointer(static_cast<const Vertex*>(0));
-    for(int y = 1; y < size[1]; ++y)
+    for(unsigned int y = 1; y < size[1]; ++y)
         glDrawElements(GL_QUAD_STRIP, size[0] * 2, GL_UNSIGNED_INT,
                        static_cast<const GLuint*>(0) + (y - 1)*size[0] * 2);
     GLVertexArrayParts::disable(Vertex::getPartsMask());
@@ -1329,7 +1329,7 @@ void SurfaceRenderer::glRenderShadowedIlluminatedHeightMap(GLuint heightColorMap
     typedef GLGeometry::Vertex<void, 0, void, 0, void, float, 3> Vertex;
     GLVertexArrayParts::enable(Vertex::getPartsMask());
     glVertexPointer(static_cast<const Vertex*>(0));
-    for(int y = 1; y < size[1]; ++y)
+    for(unsigned int y = 1; y < size[1]; ++y)
         glDrawElements(GL_QUAD_STRIP, size[0] * 2, GL_UNSIGNED_INT,
                        static_cast<const GLuint*>(0) + (y - 1)*size[0] * 2);
     GLVertexArrayParts::disable(Vertex::getPartsMask());
