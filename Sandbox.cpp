@@ -1,6 +1,7 @@
 /***********************************************************************
  * Sandbox - Vrui application to drive an augmented reality sandbox.
  * Copyright (c) 2012-2019 Oliver Kreylos
+ * Copyright (c) 2019 Scottsdale Community College
  *
  * This file is part of the Augmented Reality Sandbox (SARndbox).
  *
@@ -283,9 +284,9 @@ void Sandbox::addWater(GLContextData& contextData) const {
         x.normalize();
         y.normalize();
 
-        glVertexAttrib1fARB(1, rainStrength / waterSpeed);
         for(HandExtractor::HandList::const_iterator hIt = handExtractor->getLockedExtractedHands().begin();
                 hIt != handExtractor->getLockedExtractedHands().end(); ++hIt) {
+            glVertexAttrib1fARB(1, hIt->direction * (rainStrength / waterSpeed));
             /* Render a rain disk approximating the hand: */
             glBegin(GL_POLYGON);
             for(int i = 0; i < 32; ++i) {

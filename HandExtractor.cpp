@@ -1,6 +1,7 @@
 /***********************************************************************
  * HandExtractor - Class to identify hands from a depth image.
  * Copyright (c) 2015-2016 Oliver Kreylos
+ * Copyright (c) 2019 Scottsdale Community College
  *
  * This file is part of the Augmented Reality Sandbox (SARndbox).
  *
@@ -685,6 +686,7 @@ void HandExtractor::extractHands(const HandExtractor::DepthPixel* depthFrame,
         float depth = 0.0f; // Hand's average depth value
         float radius = 0.0f; // Hand radius
         size_t numCorners = corners.size();
+        int handType = 1;  // default to rain hand
         if(numCorners >=
                 8) { // At least four finger tips, three nooks, and a thumb tip (thumb nook optional)
             for(size_t i = 0; i < numCorners; ++i) {
@@ -792,6 +794,65 @@ void HandExtractor::extractHands(const HandExtractor::DepthPixel* depthFrame,
                     }
                 }
             }
+        } else if (numCorners == 3) { // Two tips and a nook make a V where the water drains away.
+            for (size_t i = 0; i < numCorners; ++i) {
+                /* Check if the current corner starts a sequence of two tips interleaved with one nook: */
+                Corner &t0 = corners[i];
+                Corner &n1 = corners[(i + 1) % numCorners];
+                Corner &t1 = corners[(i + 2) % numCorners];
+
+                if (t0.cornerType == 1 && n1.cornerType == -1 && t1.cornerType == 1) {
+                    /* Construct a hand model: */
+                    Point2 tp0(float(t0.x) + 0.5f, float(t0.y) + 0.5f);
+                    Point2 np1(float(n1.x) + 0.5f, float(n1.y) + 0.5f);
+                    Point2 tp1(float(t1.x) + 0.5f, float(t1.y) + 0.5f);
+
+                    /* Calculate the lengths of three sides of the triangle. */
+                    // nook to the two tips
+                    Interval sideLengths(Geometry::dist(tp0, np1));
+                    sideLengths.addValue(Geometry::dist(np1, tp1));
+                    // imaginary line connecting two finger tips
+                    sideLengths.addValue(Geometry::dist(tp0, tp1));
+
+                    /* Calculate the probability that this is a drain hand. */
+                    /* Look for a nearly (> 0.70 ratio between sides) equilateral triangle. */
+                    float prob = sideLengths.getMin() / (sideLengths.getMax() * 4.66f);
+
+                    if (maxProb < prob) {
+                        /* Center drain tool on the nook. */
+                        center = np1;
+                        /* Enlarge radius by 1/3 to approximate a full hand (rain) circle size. */
+                        radius = 1.33 * sideLengths.getMax();
+
+                        /* Calculate the hand's average depth in depth-corrected depth image space: */
+                        depth = 0.0f;
+                        if (pixelDepthCorrection != 0) {
+                            ptrdiff_t t0Off = t0.y * depthFrameSize[0] + t0.x;
+                            depth += pixelDepthCorrection[t0Off].correct(float(depthFrame[t0Off]));
+
+                            ptrdiff_t n1Off = n1.y * depthFrameSize[0] + n1.x;
+                            depth += pixelDepthCorrection[n1Off].correct(float(depthFrame[n1Off]));
+
+                            ptrdiff_t t1Off = t1.y * depthFrameSize[0] + t1.x;
+                            depth += pixelDepthCorrection[t1Off].correct(float(depthFrame[t1Off]));
+                        } else {
+                            depth += float(depthFrame[t0.y * depthFrameSize[0] + t0.x]);
+                            depth += float(depthFrame[n1.y * depthFrameSize[0] + n1.x]);
+                            depth += float(depthFrame[t1.y * depthFrameSize[0] + t1.x]);
+                        }
+                        depth /= 3.0f;
+                        maxProb = prob;
+                        if (imgPtr != 0) {
+                            /* Draw the hand: */
+                            drawLine(*blobImage, tp0, np1, Images::RGBImage::Color(255, 255, 255));
+                            drawLine(*blobImage, tp1, np1, Images::RGBImage::Color(255, 255, 255));
+                            drawCircle(*blobImage, center, radius, Images::RGBImage::Color(255, 255, 255));
+                        }
+                    }
+                    /* Evaporate at twice the rainfall rate for fast clean up of water. */
+                    handType = -2;
+                }
+            }
         }
 
         /* Check if the blob matches a hand: */
@@ -804,10 +865,11 @@ void HandExtractor::extractHands(const HandExtractor::DepthPixel* depthFrame,
             newHand.center = depthProjection.transform(Point(center[0], center[1], depth));
             newHand.radius = Geometry::dist(newHand.center, depthProjection.transform(Point(center[0] + radius,
                                             center[1], depth)));
+            newHand.direction = handType;
             hands.push_back(newHand);
 
             // DEBUGGING
-            // std::cout<<"Hand in camera space: "<<newHand.center[0]<<", "<<newHand.center[1]<<", "<<newHand.center[2]<<", "<<newHand.radius<<std::endl;
+            // std::cout<<"Hand in camera space: "<<newHand.center[0]<<", "<<newHand.center[1]<<", "<<newHand.center[2]<<", "<<newHand.radius<<", "<<newHand.direction<<std::endl;
         }
 
         /* Clean up: */
