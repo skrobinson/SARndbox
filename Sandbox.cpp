@@ -1511,8 +1511,8 @@ void Sandbox::display(GLContextData& contextData) const {
                 /* Save the depth image: */
                 {
                     glBindTexture(GL_TEXTURE_2D, dataItem->shadowDepthTextureObject);
-                    GLfloat* depthTextureImage = new
-                    GLfloat[dataItem->shadowBufferSize[1]*dataItem->shadowBufferSize[0]];
+                    GLfloat* depthTextureImage = new GLfloat[
+                        dataItem->shadowBufferSize[1]*dataItem->shadowBufferSize[0]];
                     glGetTexImage(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT, GL_FLOAT, depthTextureImage);
                     glBindTexture(GL_TEXTURE_2D, 0);
                     Images::RGBImage dti(dataItem->shadowBufferSize[0], dataItem->shadowBufferSize[1]);
