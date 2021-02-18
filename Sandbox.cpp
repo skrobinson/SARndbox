@@ -1269,6 +1269,11 @@ void Sandbox::frame(void) {
                             waterTable->setWaterDeposit(evaporationRate);
                     } else
                         std::cerr << "Wrong number of arguments for evaporationRate control pipe command" << std::endl;
+                } else if(isToken(tokens[0], "rainStrength")) {
+                    if(tokens.size() == 2) {
+                        rainStrength = GLfloat(atof(tokens[1].c_str()));
+                    } else
+                        std::cerr << "Wrong number of arguments for rainStrength control pipe command" << std::endl;
                 } else
                     std::cerr << "Unrecognized control pipe command " << tokens[0] << std::endl;
             }
