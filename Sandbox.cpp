@@ -1262,6 +1262,13 @@ void Sandbox::frame(void) {
                             rsIt->surfaceRenderer->setDippingBedThickness(dippingBedThickness);
                     } else
                         std::cerr << "Wrong number of arguments for dippingBedThickness control pipe command" << std::endl;
+                } else if(isToken(tokens[0], "evaporationRate")) {
+                    if(tokens.size() == 2) {
+                        double evaporationRate = atof(tokens[1].c_str());
+                        if(waterTable != 0)
+                            waterTable->setWaterDeposit(evaporationRate);
+                    } else
+                        std::cerr << "Wrong number of arguments for evaporationRate control pipe command" << std::endl;
                 } else
                     std::cerr << "Unrecognized control pipe command " << tokens[0] << std::endl;
             }
